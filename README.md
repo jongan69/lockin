@@ -2,7 +2,7 @@
 
 ![Lockin.wtf Logo](https://ipfs.io/ipfs/Qmc2SJQW4K7UYYVLdoKSf4cGVZbuFGTF4dZiAdRtivNkpX)
 
-An on-chain lockin dApp that allows you to lock in your tokens.
+A lockin dApp that allows you to lock in tokens.
 
 ## What's Included
 
@@ -17,8 +17,6 @@ To enhance the user experience and save a few clicks, auto-connect is enabled by
 To address potential security issues, we've implemented a signing mechanism to validate wallet ownership. The dApp will automatically request a signature upon wallet connection, but this can also be done during specific actions to confirm intent.
 
 Creating a signature is done on the client-side without any interaction with the blockchain, making it completely safe.
-
-![Wallet Connection](https://user-images.githubusercontent.com/38172/212745139-919a969c-1064-414f-8e63-eaacfc17d29d.mp4)
 
 ### **🔗 Interact with Solana's Blockchain**
 
@@ -35,8 +33,6 @@ This starter kit includes examples for the following actions:
 All these actions are performed natively using official Solana libraries like [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/), [@solana/spl-token](https://solana-labs.github.io/solana-program-library/token/js/), and [@solana/name-service](https://spl.solana.com/name-service).
 
 Additionally, we use Next.js architecture to execute these actions on the backend, with only the transaction signing happening on the client-side.
-
-![Blockchain Interaction](https://user-images.githubusercontent.com/38172/212745192-14713ea5-6dab-4889-b400-baf1337a4f1f.mp4)
 
 ### **🔌 Fetch On-Chain Data through Helius API**
 
@@ -55,8 +51,6 @@ You can easily change the theme by modifying `daisy.themes` in `./tailwind.confi
 To enhance accessibility, we integrated a simple theme switcher, enabling users to toggle between dark and light modes.
 
 We also added the [react-hot-toast](https://react-hot-toast.com/) library for visually appealing feedback on on-chain actions.
-
-![Theme Switcher](https://user-images.githubusercontent.com/38172/212745502-628238cd-311c-436c-b669-76285fa5769b.mp4)
 
 ## Getting Started
 
