@@ -5,7 +5,7 @@ export function Footer() {
         <p>
           Created and open-sourced by{" "}
           <a
-            href="https://github.com/jongan69"
+            href="https://github.com/jongan69/lockin"
             target="_blank"
             rel="noreferrer"
             className="link link-primary"
