@@ -96,13 +96,21 @@ export function HomeContent() {
       const metadataAccountInfo = await connection.getAccountInfo(metadataAccount);
       if (metadataAccountInfo !== null) {
         const token = await metaplex.nfts().findByMint({ mintAddress: mintAddress });
-        const cid = extractCidFromUrl(token.uri) ?? "";
-        const newMetadata = await fetchIpfsMetadata(cid);
-        return {
-          name: token?.name,
-          symbol: token?.symbol,
-          logo: newMetadata.imageUrl ?? DEFAULT_IMAGE_URL,
-        };
+        const cid = extractCidFromUrl(token.uri);
+        if(cid){
+          const newMetadata = await fetchIpfsMetadata(cid);
+          return {
+            name: token?.name,
+            symbol: token?.symbol,
+            logo: newMetadata.imageUrl,
+          };
+        } else {
+          return {
+            name: token?.name,
+            symbol: token?.symbol,
+            logo: DEFAULT_IMAGE_URL,
+          };
+        }        
       }
     } catch (error) {
       console.error("Error fetching token metadata:", error);

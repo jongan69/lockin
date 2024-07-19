@@ -1,7 +1,7 @@
 export const extractCidFromUrl = (url: string): string | null => {
     if (!url) {
       console.error("No IPFS URL provided");
-      return null;
+      return "";
     }
   
     let cid = "";
@@ -17,6 +17,6 @@ export const extractCidFromUrl = (url: string): string | null => {
       cid = urlParts.find((part) => part.length === 46 && part.startsWith("Qm")) ?? "";
     }
   
-    return cid;
+    return cid.toString();
   };
   
