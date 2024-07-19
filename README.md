@@ -1,6 +1,6 @@
 # Lockin.wtf
 
-![Lockin.wtf Logo](https://user-images.githubusercontent.com/38172/212745837-5de1adb8-7bca-4af1-9772-9e9547a4a06b.png)
+![Lockin.wtf Logo](https://ipfs.io/ipfs/Qmc2SJQW4K7UYYVLdoKSf4cGVZbuFGTF4dZiAdRtivNkpX)
 
 An on-chain lockin dApp that allows you to lock in your tokens.
 
