@@ -1,5 +1,5 @@
 import { Transaction } from "@solana/web3.js";
-import { MEMO_PROGRAM_ID, NONCE } from "@utils/globals";
+import { MEMO_PROGRAM_ID } from "@utils/globals";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export type SignValidateData = {
@@ -21,7 +21,7 @@ export default async function handler(
     const tx = Transaction.from(Buffer.from(signedTx, "base64"));
 
     // Ideally this would be retrieved from a DB for each publicKey
-    const nonce = NONCE;
+    const nonce = "";
 
     try {
       const inx = tx.instructions[0];

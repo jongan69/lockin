@@ -30,7 +30,7 @@ export default async function handler(
     const { publicKeyStr, privateKey, inputMint, outputMint, amount, slippageBps } = req.body;
 
     if (!privateKey || !inputMint || !outputMint || !amount || !slippageBps || !publicKeyStr) {
-      res.status(400).send({ message: 'Missing required fields' });
+      // res.status(400).send( 'Missing required fields');
       return;
     }
 
@@ -74,6 +74,6 @@ export default async function handler(
     res.status(200).json({ tx: txBase64 });
   } catch (error: any) {
     console.error('Error executing swap:', error);
-    res.status(500).send({ message: 'Error executing swap', error: error.message });
+    // res.status(500).send({ message: 'Error executing swap', error: error.message });
   }
 }
