@@ -27,7 +27,7 @@ export function Item({ data }: Props) {
 
   return (
     <div className="card shadow-xl bg-neutral text-neutral-content">
-      {data.logo && (
+      {data && data.logo && (
         <figure className="relative h-80">
           <img
             className="object-cover h-80 w-96 aspect-square	"

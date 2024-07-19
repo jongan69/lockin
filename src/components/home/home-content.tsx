@@ -1,15 +1,20 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import React, { useEffect, useState } from "react";
 import { ItemList } from "@components/home/item-list";
-import { Button, ButtonState } from "@components/home/button";
 import { toast } from "react-hot-toast";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Metaplex } from "@metaplex-foundation/js";
-import { ENV, TokenListProvider } from "@solana/spl-token-registry";
+import { Circles } from "react-loader-spinner";
+import { fetchIpfsMetadata } from "../../utils/fetchIpfsMetadata";
+import { extractCidFromUrl } from "../../utils/extractCidFromUrl";
+import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
 
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
 const connection = new Connection(RPC_ENDPOINT);
 const metaplex = Metaplex.make(connection);
+const DEFAULT_IMAGE_URL =
+  process.env.UNKNOWN_IMAGE_URL ||
+  "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
 
 type TokenData = {
   decimals: number;
@@ -23,16 +28,11 @@ type TokenData = {
 
 export function HomeContent() {
   const { publicKey, signTransaction } = useWallet();
-  const [signState, setSignState] = useState<ButtonState>("initial");
+  const [signState, setSignState] = useState<string>("initial");
   const [tokens, setTokens] = useState<TokenData[]>([]);
   const prevPublicKey = React.useRef<string>(publicKey?.toBase58() || "");
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const fetchJupiterSwap = async (id: string | undefined) => {
-    const price = (await fetch(`https://price.jup.ag/v6/price?ids=${id}`)).json();
-    return price;
-  };
-
-  // Reset the state if wallet changes or disconnects
   useEffect(() => {
     if (publicKey && publicKey.toBase58() !== prevPublicKey.current) {
       prevPublicKey.current = publicKey.toBase58();
@@ -40,10 +40,10 @@ export function HomeContent() {
     }
   }, [publicKey]);
 
-  // This will request a signature automatically but you can have a separate button for that
   useEffect(() => {
     async function sign() {
       if (publicKey && signTransaction && signState === "initial") {
+        setLoading(true);
         setSignState("loading");
         const signToastId = toast.loading("Getting Token Data...");
 
@@ -54,19 +54,15 @@ export function HomeContent() {
           );
 
           const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount) => {
-
             const mintAddress = tokenAccount.account.data.parsed.info.mint;
             const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
-            const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals
+            const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
             const jupiterPrice = await fetchJupiterSwap(mintAddress);
-            if (jupiterPrice)
-              console.log(`The Price of ${mintAddress} is $${jupiterPrice.data[mintAddress].price}`);
 
-            // Fetch token metadata
-            const metadata = await fetchTokenMetadata(new PublicKey((mintAddress)), mintAddress);
+            const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
 
             return {
-              mintAddress: mintAddress,
+              mintAddress,
               amount,
               decimals,
               ...metadata,
@@ -75,16 +71,14 @@ export function HomeContent() {
           });
 
           const tokens = await Promise.all(tokenDataPromises);
-
-          if (tokens.length > 0)
-            setSignState("success");
           setTokens(tokens);
+          setSignState("success");
           toast.success("Token Data Retrieved", { id: signToastId });
         } catch (error: any) {
           setSignState("error");
-          toast.error("Error verifying wallet, please reconnect wallet", {
-            id: signToastId,
-          });
+          toast.error("Error verifying wallet, please reconnect wallet", { id: signToastId });
+        } finally {
+          setLoading(false);
         }
       }
     }
@@ -92,63 +86,47 @@ export function HomeContent() {
     sign();
   }, [signState, signTransaction, publicKey]);
 
-  // Fetch token metadata
   async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
-    // First get price from jupiter if it exsits
-    // console.log("mintAddress", mint);
     try {
       const metadataAccount = metaplex
         .nfts()
         .pdas()
         .metadata({ mint: mintAddress });
-      // console.log("token", metadataAccount);
 
       const metadataAccountInfo = await connection.getAccountInfo(metadataAccount);
-
-      if (metadataAccountInfo) {
+      if (metadataAccountInfo !== null) {
         const token = await metaplex.nfts().findByMint({ mintAddress: mintAddress });
-        // console.log("token", token);
+        const cid = extractCidFromUrl(token.uri) ?? "";
+        const newMetadata = await fetchIpfsMetadata(cid);
         return {
-          name: token.name,
-          symbol: token.symbol,
-          logo: token.json?.image,
-        };
-      } else {
-        const provider = await new TokenListProvider().resolve();
-        const tokenList = provider.filterByChainId(ENV.MainnetBeta).getList();
-        const tokenMap = tokenList.reduce((map, item) => {
-          map.set(item.address, item);
-          return map;
-        }, new Map());
-
-        const token = tokenMap.get(mintAddress);
-
-        return {
-          name: token.name,
-          symbol: token.symbol,
-          logo: token.logoURI,
+          name: token?.name,
+          symbol: token?.symbol,
+          logo: newMetadata.imageUrl ?? DEFAULT_IMAGE_URL,
         };
       }
-
     } catch (error) {
       console.error("Error fetching token metadata:", error);
-      return { name: "Unknown", symbol: "Unknown", logo: "" };
+      return { name: "Unknown", symbol: "Unknown", logo: DEFAULT_IMAGE_URL };
     }
   }
 
-  // const onSignClick = () => {
-  //   setSignState("initial");
-  // };
-
-  if (!tokens) {
+  if (loading) {
     return (
-      <p className="text-center p-4">
-        Failed to load items, please try connecting again.
-      </p>
+      <div className="flex justify-center items-center h-screen">
+        <Circles color="#00BFFF" height={80} width={80} />
+      </div>
     );
   }
 
-  if (publicKey && signState === "success" && !tokens) {
+  if (!tokens && signState === "error") {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Circles color="#00BFFF" height={80} width={80} />
+      </div>
+    );
+  }
+
+  if (publicKey && signState === "success" && tokens.length === 0) {
     return <p className="text-center p-4">Loading wallet information...</p>;
   }
 
@@ -159,9 +137,7 @@ export function HomeContent() {
       {hasFetchedData ? (
         <div>
           <h2 className="text-center text-primary mt-4">Token Accounts</h2>
-          <ItemList 
-          items={tokens} 
-          />
+          <ItemList items={tokens} />
         </div>
       ) : (
         <div className="text-center">
@@ -178,7 +154,7 @@ export function HomeContent() {
             <div className="card border-2 border-primary mb-5">
               <div className="card-body items-center text-center">
                 <h2 className="card-title text-center mb-2">
-                  Please Disconnect and reconnect your wallet
+                  {`Please Disconnect and reconnect your wallet. \nYou might need to reload the page. \nYou might have too many fucking tokens AND WE'RE BEING RATE LIMITED, shoutout bald guy Mert.`}
                 </h2>
               </div>
             </div>

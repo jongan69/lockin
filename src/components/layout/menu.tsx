@@ -45,7 +45,9 @@ export function Menu({ twitterHandle, className }: Props) {
           </li>
         </>
       )}
-      <WalletMultiButton className="btn" />
+      <li>
+        <WalletMultiButton className="btn w-full lg:w-auto text-center" />
+      </li>
     </ul>
   );
 }
