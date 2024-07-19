@@ -11,7 +11,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "find-deadcode": "ts-prune | grep -v '(used in module)'"
   },
   "dependencies": {
     "@jup-ag/api": "^6.0.24",
@@ -37,6 +38,7 @@
     "swr": "^2.0.0",
     "tailwind": "^4.0.0",
     "theme-change": "^2.3.0",
+    "ts-prune": "^0.10.3",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

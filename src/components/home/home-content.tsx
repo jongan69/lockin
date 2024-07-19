@@ -97,7 +97,8 @@ export function HomeContent() {
       if (metadataAccountInfo !== null) {
         const token = await metaplex.nfts().findByMint({ mintAddress: mintAddress });
         const cid = extractCidFromUrl(token.uri);
-        if(cid){
+        if (cid) {
+          console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
           const newMetadata = await fetchIpfsMetadata(cid);
           return {
             name: token?.name,
@@ -108,9 +109,9 @@ export function HomeContent() {
           return {
             name: token?.name,
             symbol: token?.symbol,
-            logo: DEFAULT_IMAGE_URL,
+            logo: token.json?.image ?? DEFAULT_IMAGE_URL,
           };
-        }        
+        }
       }
     } catch (error) {
       console.error("Error fetching token metadata:", error);
