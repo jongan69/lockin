@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest } from '@jup-ag/api';
 import { useCloseTokenAccount } from "../../utils/hooks/useCloseTokenAccount"; // Adjust the path as needed
+import { DEFAULT_TOKEN, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
 
 type Props = {
   items: Array<ItemData>;
@@ -22,10 +23,10 @@ export function ItemList({ items }: Props) {
   const jupiterQuoteApi = createJupiterApiClient();
 
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"
-  const targetTokenMintAddress = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5";
+  const targetTokenMintAddress = DEFAULT_TOKEN;
   const targetTokenMintPubkey = new PublicKey(targetTokenMintAddress);
-  const referralAccountPubkey = new PublicKey('2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE');
-  const referralProgramId = new PublicKey('REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3');
+  const referralAccountPubkey = new PublicKey(REFERAL_WALLET);
+  const referralProgramId = REFER_PROGRAM_ID;
 
   const handleItemClick = (item: ItemData) => {
     setSelectedItem(item);

@@ -10,6 +10,8 @@ import { extractCidFromUrl } from "../../utils/extractCidFromUrl";
 import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
 import Bottleneck from "bottleneck";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import useTokenBalance from "@utils/hooks/useTokenBalance";
+import { DEFAULT_TOKEN, FEE_ADDRESS, REFERAL_WALLET, TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
 
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
 const connection = new Connection(RPC_ENDPOINT);
@@ -47,6 +49,8 @@ export function HomeContent() {
   const prevPublicKey = React.useRef<string>(publicKey?.toBase58() || "");
   const [loading, setLoading] = useState<boolean>(false);
   const [totalAccounts, setTotalAccounts] = useState<number>(0);
+  const { balance, error } = useTokenBalance(FEE_ADDRESS);
+
   let [totalValue, setTotalValue] = useState<number>(0);
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export function HomeContent() {
         try {
           const tokenAccounts = await rpcLimiter.schedule(() =>
             connection.getParsedTokenAccountsByOwner(publicKey, {
-              programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+              programId: TOKEN_PROGRAM_ID_ADDRESS,
             })
           );
 
@@ -203,6 +207,8 @@ export function HomeContent() {
           )}
         </div>
       )}
-    </div>
+      {balance && balance > 0 && <p className="text-center">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
+      {/* {error && <p>Balance Errror: {error}</p>} */}
+    </div> 
   );
 }
