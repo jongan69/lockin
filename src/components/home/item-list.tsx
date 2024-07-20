@@ -22,6 +22,9 @@ export function ItemList({ items }: Props) {
   const jupiterQuoteApi = createJupiterApiClient();
 
   const targetTokenMintAddress = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5";
+  const targetTokenMintPubkey = new PublicKey(targetTokenMintAddress);
+  const referralAccountPubkey = new PublicKey('2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE');
+  const referralProgramId = new PublicKey('REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3');
 
   const handleItemClick = (item: ItemData) => {
     setSelectedItem(item);
@@ -59,6 +62,7 @@ export function ItemList({ items }: Props) {
           amount: balanceInSmallestUnit,
           autoSlippage: true,
           autoSlippageCollisionUsdValue: 1_000,
+          platformFeeBps: 25,
           maxAutoSlippageBps: 1000,
           minimizeSlippage: true,
           onlyDirectRoutes: false,
@@ -70,14 +74,13 @@ export function ItemList({ items }: Props) {
           throw new Error("Failed to fetch quote");
         }
 
-        let referralAccountPubkey = new PublicKey('2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE');
         const [feeAccount] = PublicKey.findProgramAddressSync(
           [
             Buffer.from("referral_ata"),
             referralAccountPubkey.toBuffer(),
-            new PublicKey(targetTokenMintAddress).toBuffer(),
+            targetTokenMintPubkey.toBuffer(),
           ],
-          new PublicKey("REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3")
+          referralProgramId
         );
 
         const swapObj = await jupiterQuoteApi.swapPost({
