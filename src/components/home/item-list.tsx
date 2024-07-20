@@ -1,10 +1,10 @@
 import { Item, ItemData } from "@components/home/item";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, TransactionSignature, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest } from '@jup-ag/api';
-
+import { useCloseTokenAccount } from "../../utils/hooks/useCloseTokenAccount"; // Adjust the path as needed
 
 type Props = {
   items: Array<ItemData>;
@@ -13,6 +13,7 @@ type Props = {
 export function ItemList({ items }: Props) {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
   const { connection } = useConnection();
+  const { closeTokenAccount } = useCloseTokenAccount();
   const [selectedItem, setSelectedItem] = useState<ItemData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,10 +23,6 @@ export function ItemList({ items }: Props) {
 
   const targetTokenMintAddress = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5";
 
-  if (!items) {
-    return null;
-  }
-
   const handleItemClick = (item: ItemData) => {
     setSelectedItem(item);
     setShowPopup(true);
@@ -33,8 +30,6 @@ export function ItemList({ items }: Props) {
   };
 
   const handleClosePopup = async (answer: boolean) => {
-    let signature: TransactionSignature | undefined = undefined;
-
     if (answer && selectedItem && publicKey && signTransaction) {
       if (selectedItem.mintAddress === targetTokenMintAddress) {
         setErrorMessage("Error: You are already lock maxing this token.");
@@ -46,28 +41,34 @@ export function ItemList({ items }: Props) {
         setMessage('Preparing transaction...');
         const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
 
+        if (balanceInSmallestUnit === 0) {
+          // Close the token account if no tokens
+          console.log(`Closing token account for ${selectedItem.symbol}: ${selectedItem.mintAddress}`);
+          await closeTokenAccount(new PublicKey(selectedItem.mintAddress));
+          setShowPopup(false);
+          setSelectedItem(null);
+          toast.success("Token account closed successfully!");
+          setSending(false);
+          return;
+        }
+
+        console.log(`Swapping ${balanceInSmallestUnit} ${selectedItem.symbol} for ${targetTokenMintAddress}`);
         const params: QuoteGetRequest = {
           inputMint: selectedItem.mintAddress,
           outputMint: targetTokenMintAddress,
-          amount: balanceInSmallestUnit, // 0.1 SOL
+          amount: balanceInSmallestUnit,
           autoSlippage: true,
           autoSlippageCollisionUsdValue: 1_000,
-          maxAutoSlippageBps: 1000, // 10%
+          maxAutoSlippageBps: 1000,
           minimizeSlippage: true,
           onlyDirectRoutes: false,
           asLegacyTransaction: false,
         };
         const quote = await jupiterQuoteApi.quoteGet(params);
 
-        // const quoteResponse = await fetch(
-        //   `https://quote-api.jup.ag/v6/quote?inputMint=${selectedItem.mintAddress}&outputMint=${targetTokenMintAddress}&amount=${selectedItem.amount}&slippageBps=50`
-        // ).then((res) => res.json());
-
         if (!quote) {
           throw new Error("Failed to fetch quote");
         }
-
-        console.log("Initiating swap request for: ", publicKey?.toString());
 
         const swapObj = await jupiterQuoteApi.swapPost({
           swapRequest: {
@@ -82,39 +83,31 @@ export function ItemList({ items }: Props) {
           throw new Error("Swap API request failed");
         }
 
-        console.log('Received swap data:', swapObj);
-
         const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
         const tx = VersionedTransaction.deserialize(swapTransactionBuf);
-
-        if (!signTransaction) {
-          throw new Error('Wallet does not support transaction signing!');
-        }
 
         const signedTransaction = await signTransaction(tx);
 
         setMessage('Simulating transaction...');
 
-        // Simulate transaction
         const simulationResult = await connection.simulateTransaction(signedTransaction);
         if (simulationResult.value.err) {
-          console.error("Simulation error:", simulationResult.value.err);
           throw new Error("Transaction simulation failed");
         }
 
         setMessage('Sending transaction...');
 
-        const {
-          context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
+        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
 
-        // signedTransaction.recentBlockhash = blockhash;
-        // signedTransaction.lastValidBlockHeight = lastValidBlockHeight;
-
-        signature = await sendTransaction(signedTransaction, connection, { minContextSlot });
+        const signature = await sendTransaction(signedTransaction, connection, { minContextSlot });
 
         setMessage('Transaction confirmed successfully!');
         toast.success('Transaction confirmed successfully!');
         console.log("Swap successful:", signature);
+
+        // Close the token account after the swap
+        await closeTokenAccount(new PublicKey(selectedItem.mintAddress));
+
         setShowPopup(false);
         setSelectedItem(null);
       } catch (error) {
@@ -158,16 +151,12 @@ export function ItemList({ items }: Props) {
             <div className="flex justify-around mt-4">
               <button
                 onClick={() => handleClosePopup(true)}
-                // variant="contained"
-                color="secondary"
                 disabled={sending}
               >
                 {sending ? 'Processing...' : 'Yes'}
               </button>
               <button
                 onClick={() => handleClosePopup(false)}
-                // variant="contained"
-                color="secondary"
                 disabled={sending}
               >
                 No
