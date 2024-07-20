@@ -11,17 +11,22 @@ export function Header({ twitterHandle }: Props) {
     <div className="navbar mb-6 shadow-lg bg-neutral text-neutral-content rounded-box">
       <div className="navbar-start">
         <div className="px-2 mx-2">
-          <span className="text-sm md:text-lg font-bold">Lock TF In</span>
+          <span className="text-sm md:text-lg font-bold">
+            LOCK TF IN
+          </span>
         </div>
       </div>
 
       <div className="navbar-end">
         <div className="hidden lg:block">
-          <Menu twitterHandle={twitterHandle} className="menu-horizontal px-1" />
+          <Menu
+            twitterHandle={twitterHandle}
+            className="menu-horizontal px-1"
+          />
         </div>
         <ThemeToggle />
-        {/* <div className="lg:hidden">
-          <label htmlFor="mobile-menu" className="btn btn-square btn-ghost">
+        <div className="lg:hidden">
+          <label htmlFor="my-drawer-3" className="btn btn-square btn-ghost">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -36,12 +41,7 @@ export function Header({ twitterHandle }: Props) {
               ></path>
             </svg>
           </label>
-        </div> */}
-      </div>
-
-      {/* <input type="checkbox" id="mobile-menu" className="drawer-toggle" /> */}
-      <div className="drawer-content lg:hidden">
-        <Menu twitterHandle={twitterHandle} className="menu-vertical p-4" />
+        </div>
       </div>
     </div>
   );
