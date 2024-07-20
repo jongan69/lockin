@@ -79,9 +79,7 @@ export function HomeContent() {
             const [tokenAccountAddress] = await PublicKey.findProgramAddress(
               [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), new PublicKey(mintAddress).toBuffer()],
               ASSOCIATED_TOKEN_PROGRAM_ID
-          );
-  
-            console.log("tokenAccount found: ", tokenAccountAddress.toString());
+            );
 
             const jupiterPrice = await apiLimiter.schedule(() =>
               fetchJupiterSwap(mintAddress)
@@ -134,8 +132,6 @@ export function HomeContent() {
         const token = await rpcLimiter.schedule(() =>
           metaplex.nfts().findByMint({ mintAddress: mintAddress })
         );
-        // console.log(`token: ${JSON.stringify(token)}`);
-
         const cid = extractCidFromUrl(token.uri);
         if (cid) {
           console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
