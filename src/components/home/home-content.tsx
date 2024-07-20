@@ -19,13 +19,13 @@ const DEFAULT_IMAGE_URL =
 
 // Rate limiters
 const rpcLimiter = new Bottleneck({
-  maxConcurrent: 5,
-  minTime: 100, //  requests per second
+  maxConcurrent: 10,
+  minTime: 100,
 });
 
 const apiLimiter = new Bottleneck({
-  maxConcurrent: 2,
-  minTime: 500, // 2 requests per second
+  maxConcurrent: 5,
+  minTime: 100,
 });
 
 type TokenData = {
@@ -44,6 +44,8 @@ export function HomeContent() {
   const [tokens, setTokens] = useState<TokenData[]>([]);
   const prevPublicKey = React.useRef<string>(publicKey?.toBase58() || "");
   const [loading, setLoading] = useState<boolean>(false);
+  const [totalAccounts, setTotalAccounts] = useState<number>(0);
+  let [totalValue, setTotalValue] = useState<number>(0);
 
   useEffect(() => {
     if (publicKey && publicKey.toBase58() !== prevPublicKey.current) {
@@ -66,6 +68,8 @@ export function HomeContent() {
             })
           );
 
+          console.log("tokenAccounts found: ", tokenAccounts.value.length);
+          setTotalAccounts(tokenAccounts.value.length);
           const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount: { account: { data: { parsed: { info: { mint: any; tokenAmount: { uiAmount: any; decimals: any; }; }; }; }; }; }) => {
             const mintAddress = tokenAccount.account.data.parsed.info.mint;
             const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
@@ -76,13 +80,15 @@ export function HomeContent() {
 
             const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
             const price = jupiterPrice.data[mintAddress]?.price || 0;
-
+            const usdValue = amount * price;
+            setTotalValue(totalValue += usdValue)
+            console.log(totalValue)
             return {
               mintAddress,
               amount,
               decimals,
               ...metadata,
-              usdValue: amount * price,
+              usdValue: usdValue,
             };
           });
 
@@ -141,12 +147,14 @@ export function HomeContent() {
     }
   }
 
-  if (loading || !tokens ||signState === "loading") {
+  if (loading || !tokens || signState === "loading") {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <p>Getting Token Data...</p>
-        <Circles color="#00BFFF" height={80} width={80} />
-      </div>
+      <>
+        <p>Found {totalAccounts} Accounts, Getting Token Data...</p>
+        <div className="flex justify-center items-center h-screen">
+          <Circles color="#00BFFF" height={80} width={80} />
+        </div>
+      </>
     );
   }
 
@@ -155,13 +163,14 @@ export function HomeContent() {
     return <p className="text-center p-4">Loading wallet information...</p>;
   }
 
-  const hasFetchedData = publicKey && signState === "success" && tokens.length > 0;
+  const hasFetchedData = publicKey && signState === "success" && tokens.length > 0 && totalAccounts > 0;
 
   return (
     <div className="grid grid-cols-1">
       {hasFetchedData ? (
         <div>
-          <h2 className="text-center text-primary mt-4">Token Accounts</h2>
+          <h2 className="text-center text-primary m-10">{totalAccounts} Token Accounts</h2>
+          <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
           <ItemList items={tokens} />
         </div>
       ) : (
