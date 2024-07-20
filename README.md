@@ -25,7 +25,7 @@ Once your wallet is connected, it's time to interact with the blockchain!
 This starter kit includes examples for the following actions:
 
 - Create a transaction of SOL to another wallet
-- Create a transaction of an SPL token (like $BONK) to another wallet
+- Create a transaction of an SPL token (like $LOCKIN) to another wallet
 - Submit the transaction to the blockchain
 - Confirm if the transaction was successful
 - Find the Twitter handle associated with a wallet address
