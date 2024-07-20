@@ -8,7 +8,7 @@ export type ItemData = {
   amount: number;
   symbol?: string;
   logo?: string;
-  usdValue?: number;
+  usdValue: number;
   cid?: string;
 };
 

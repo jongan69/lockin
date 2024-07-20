@@ -21,6 +21,7 @@ export function ItemList({ items }: Props) {
   const [message, setMessage] = useState('');
   const jupiterQuoteApi = createJupiterApiClient();
 
+  const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"
   const targetTokenMintAddress = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5";
   const targetTokenMintPubkey = new PublicKey(targetTokenMintAddress);
   const referralAccountPubkey = new PublicKey('2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE');
@@ -36,6 +37,8 @@ export function ItemList({ items }: Props) {
     if (answer && selectedItem && publicKey && signTransaction) {
       if (selectedItem.mintAddress === targetTokenMintAddress) {
         setErrorMessage("Error: You are already lock maxing this token.");
+        window.open(raydiumUrl, '_blank');
+        handleClosePopup(false)
         return;
       }
 
@@ -137,13 +140,15 @@ export function ItemList({ items }: Props) {
     }
   };
 
+  const sortedItems = [...items].sort((a, b) => b.usdValue - a.usdValue);
+
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 ? (
           <p className="p-4">No Coins found in your wallet</p>
         ) : (
-          items.map((item, index) => (
+          sortedItems.map((item, index) => (
             <div
               key={index}
               onClick={() => handleItemClick(item)}

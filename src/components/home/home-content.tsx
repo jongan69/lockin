@@ -37,7 +37,7 @@ type TokenData = {
   amount: number;
   symbol?: string;
   logo?: string;
-  usdValue?: number;
+  usdValue: number;
 };
 
 export function HomeContent() {
