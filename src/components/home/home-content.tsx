@@ -19,13 +19,13 @@ const DEFAULT_IMAGE_URL =
 
 // Rate limiters
 const rpcLimiter = new Bottleneck({
-  maxConcurrent: 1,
-  minTime: 1, // 2 requests per second
+  maxConcurrent: 5,
+  minTime: 100, //  requests per second
 });
 
 const apiLimiter = new Bottleneck({
-  maxConcurrent: 5,
-  minTime: 100, // 2 requests per second
+  maxConcurrent: 2,
+  minTime: 500, // 2 requests per second
 });
 
 type TokenData = {
@@ -75,13 +75,14 @@ export function HomeContent() {
             );
 
             const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
+            const price = jupiterPrice.data[mintAddress]?.price || 0;
 
             return {
               mintAddress,
               amount,
               decimals,
               ...metadata,
-              usdValue: amount * jupiterPrice.data[mintAddress].price,
+              usdValue: amount * price,
             };
           });
 
@@ -92,6 +93,7 @@ export function HomeContent() {
         } catch (error: any) {
           setSignState("error");
           toast.error("Error verifying wallet, please reconnect wallet", { id: signToastId });
+          console.error(error);
         } finally {
           setLoading(false);
         }
@@ -111,10 +113,11 @@ export function HomeContent() {
       const metadataAccountInfo = await rpcLimiter.schedule(() =>
         connection.getAccountInfo(metadataAccount)
       );
-      const token = await rpcLimiter.schedule(() =>
-        metaplex.nfts().findByMint({ mintAddress: mintAddress })
-      );
-      if (metadataAccountInfo && token) {
+
+      if (metadataAccountInfo) {
+        const token = await rpcLimiter.schedule(() =>
+          metaplex.nfts().findByMint({ mintAddress: mintAddress })
+        );
         const cid = extractCidFromUrl(token.uri);
         if (cid) {
           console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
@@ -133,26 +136,20 @@ export function HomeContent() {
         }
       }
     } catch (error) {
-      console.error("Error fetching token metadata:", error);
-      return { name: "Unknown", symbol: "Unknown", logo: DEFAULT_IMAGE_URL };
+      console.error("Error fetching token metadata for:", mint, error);
+      return { name: mint, symbol: mint, logo: DEFAULT_IMAGE_URL };
     }
   }
 
-  if (loading) {
+  if (loading || !tokens ||signState === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
+        <p>Getting Token Data...</p>
         <Circles color="#00BFFF" height={80} width={80} />
       </div>
     );
   }
 
-  if (!tokens && signState === "error") {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Circles color="#00BFFF" height={80} width={80} />
-      </div>
-    );
-  }
 
   if (publicKey && signState === "success" && tokens.length === 0) {
     return <p className="text-center p-4">Loading wallet information...</p>;

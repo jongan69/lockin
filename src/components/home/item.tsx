@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export type ItemData = {
   decimals: number;
@@ -8,37 +8,57 @@ export type ItemData = {
   symbol?: string;
   logo?: string;
   usdValue?: number;
+  cid?: string;
 };
 
-type Props = {
+type ImageProps = {
+  cid: string | undefined;
+  logo: string | undefined;
+  alt: string;
+};
+
+const DEFAULT_IMAGE_URL =
+  process.env.UNKNOWN_IMAGE_URL ||
+  "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
+
+const ImageComponent = ({ cid, alt, logo }: ImageProps) => {
+  const [src, setSrc] = useState<string>(DEFAULT_IMAGE_URL);
+
+  useEffect(() => {
+    if (cid) {
+      const imageUrl = `https://ipfs.io/ipfs/${cid}`;
+      setSrc(imageUrl);
+    } else if (logo) {
+      setSrc(logo);
+    }
+  }, [cid]);
+
+  const handleError = () => {
+    setSrc(DEFAULT_IMAGE_URL);
+  };
+
+  return <img className="object-cover h-80 w-96 aspect-square" src={src} alt={alt} onError={handleError} />;
+};
+
+type ItemProps = {
   data: ItemData;
 };
 
-export function Item({ data }: Props) {
-  const name = data.name
-  const symbol = data.symbol
-  const amount = data.amount
-  const logo = data.logo 
-  const usdValue = data.usdValue
-  // const mint = data.account.data.parsed?.info.mint
-  // const balance = data.account.data.parsed?.info.tokenAmount.uiAmount
-  // const name = data.name;
-  // const collection = data.collectionName;
+export function Item({ data }: ItemProps) {
+  const { name, symbol, amount, logo, usdValue, cid } = data;
 
   return (
     <div className="card shadow-xl bg-neutral text-neutral-content">
-      {data && data.logo && (
+      {logo && (
         <figure className="relative h-80">
-          <img
-            className="object-cover h-80 w-96 aspect-square	"
-            src={logo}
-            alt={`Picture of ${name}`}
-          />
+          <ImageComponent cid={cid} logo={logo} alt={`Picture of ${name}`} />
         </figure>
       )}
       <div className="card-body p-4 items-center text-center">
         <h2 className="card-title m-0">{name}</h2>
-        <p>{symbol}: {amount} (≈ ${usdValue})</p>
+        <p>
+          {symbol}: {amount} (≈ ${usdValue})
+        </p>
       </div>
     </div>
   );
