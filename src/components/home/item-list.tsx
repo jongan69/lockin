@@ -66,7 +66,7 @@ export function ItemList({ items }: Props) {
           amount: balanceInSmallestUnit,
           autoSlippage: true,
           autoSlippageCollisionUsdValue: 1_000,
-          platformFeeBps: 25,
+          platformFeeBps: 100,
           maxAutoSlippageBps: 1000,
           minimizeSlippage: true,
           onlyDirectRoutes: false,
