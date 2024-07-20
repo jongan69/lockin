@@ -10,14 +10,15 @@ export default async function handler(req: { query: { cid: any; }; }, res: { sta
   const ipfsUrl = `https://ipfs.io/ipfs/${cid}`;
 
   try {
-    const response = await fetch(ipfsUrl);
+    const response = await fetch(ipfsUrl, { mode: 'no-cors' });
     if (!response.ok) {
       throw new Error(`Error fetching IPFS data: ${response}`);
     }
     const data = await response.json();
     console.log(`Found IPFS data from: ${data.image}`);
-    res.status(200).json({imageUrl: data.image});
+    res.status(200).json({ imageUrl: data.image });
   } catch (error) {
+    console.error(`Error fetching IPFS data: ${error}`);
     res.status(500).json({ error });
   }
 }

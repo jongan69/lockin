@@ -8,6 +8,7 @@ import { Circles } from "react-loader-spinner";
 import { fetchIpfsMetadata } from "../../utils/fetchIpfsMetadata";
 import { extractCidFromUrl } from "../../utils/extractCidFromUrl";
 import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
+import Bottleneck from "bottleneck";
 
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
 const connection = new Connection(RPC_ENDPOINT);
@@ -15,6 +16,17 @@ const metaplex = Metaplex.make(connection);
 const DEFAULT_IMAGE_URL =
   process.env.UNKNOWN_IMAGE_URL ||
   "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
+
+// Rate limiters
+const rpcLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  minTime: 1, // 2 requests per second
+});
+
+const apiLimiter = new Bottleneck({
+  maxConcurrent: 5,
+  minTime: 100, // 2 requests per second
+});
 
 type TokenData = {
   decimals: number;
@@ -48,16 +60,19 @@ export function HomeContent() {
         const signToastId = toast.loading("Getting Token Data...");
 
         try {
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            publicKey,
-            { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+          const tokenAccounts = await rpcLimiter.schedule(() =>
+            connection.getParsedTokenAccountsByOwner(publicKey, {
+              programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            })
           );
 
-          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount) => {
+          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount: { account: { data: { parsed: { info: { mint: any; tokenAmount: { uiAmount: any; decimals: any; }; }; }; }; }; }) => {
             const mintAddress = tokenAccount.account.data.parsed.info.mint;
             const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
             const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
-            const jupiterPrice = await fetchJupiterSwap(mintAddress);
+            const jupiterPrice = await apiLimiter.schedule(() =>
+              fetchJupiterSwap(mintAddress)
+            );
 
             const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
 
@@ -93,13 +108,17 @@ export function HomeContent() {
         .pdas()
         .metadata({ mint: mintAddress });
 
-      const metadataAccountInfo = await connection.getAccountInfo(metadataAccount);
-      if (metadataAccountInfo !== null) {
-        const token = await metaplex.nfts().findByMint({ mintAddress: mintAddress });
+      const metadataAccountInfo = await rpcLimiter.schedule(() =>
+        connection.getAccountInfo(metadataAccount)
+      );
+      const token = await rpcLimiter.schedule(() =>
+        metaplex.nfts().findByMint({ mintAddress: mintAddress })
+      );
+      if (metadataAccountInfo && token) {
         const cid = extractCidFromUrl(token.uri);
         if (cid) {
           console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
-          const newMetadata = await fetchIpfsMetadata(cid);
+          const newMetadata = await apiLimiter.schedule(() => fetchIpfsMetadata(cid));
           return {
             name: token?.name,
             symbol: token?.symbol,
