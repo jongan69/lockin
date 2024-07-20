@@ -69,7 +69,8 @@ UNKNOWN_IMAGE_URL=https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd8
 ## Deploying
 
 1. Run `yarn build` locally to ensure everything compiles correctly.
-2. Link your favorite server provider to your repository (we use Vercel for the demo).
-3. Any push to the `main` branch will automatically deploy a new version.
+2. Use `https://favicon.io/favicon-converter/` to generate favicons.
+3. Link your favorite server provider to your repository (we use Vercel for the demo).
+4. Any push to the `main` branch will automatically deploy a new version.
 
 > _This starter kit was made possible by the amazing [Create dApp Solana Next](https://github.com/thuglabs/create-dapp-solana-nextjs) template, which served as the foundation for everything here._

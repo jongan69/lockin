@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 export type ItemData = {
   decimals: number;
   mintAddress: string;
+  tokenAddress: string;
   name?: string;
   amount: number;
   symbol?: string;

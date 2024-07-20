@@ -47,7 +47,7 @@ export function ItemList({ items }: Props) {
         if (balanceInSmallestUnit === 0) {
           // Close the token account if no tokens
           console.log(`Closing token account for ${selectedItem.symbol}: ${selectedItem.mintAddress}`);
-          await closeTokenAccount(new PublicKey(selectedItem.mintAddress));
+          await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
           setShowPopup(false);
           setSelectedItem(null);
           toast.success("Token account closed successfully!");
@@ -120,7 +120,7 @@ export function ItemList({ items }: Props) {
         console.log("Swap successful:", signature);
 
         // Close the token account after the swap
-        await closeTokenAccount(new PublicKey(selectedItem.mintAddress));
+        await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
 
         setShowPopup(false);
         setSelectedItem(null);

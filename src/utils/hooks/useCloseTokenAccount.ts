@@ -13,6 +13,7 @@ export const useCloseTokenAccount = () => {
     }
 
     const tokenAccount = new PublicKey(tokenAccountPubkey);
+    console.log("Closing token account: ", tokenAccount.toString());
 
     // Check if the token account is valid
     let tokenAccountInfo;

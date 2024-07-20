@@ -9,6 +9,7 @@ import { fetchIpfsMetadata } from "../../utils/fetchIpfsMetadata";
 import { extractCidFromUrl } from "../../utils/extractCidFromUrl";
 import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
 import Bottleneck from "bottleneck";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
 const connection = new Connection(RPC_ENDPOINT);
@@ -31,6 +32,7 @@ const apiLimiter = new Bottleneck({
 type TokenData = {
   decimals: number;
   mintAddress: string;
+  tokenAddress: string;
   name?: string;
   amount: number;
   symbol?: string;
@@ -68,12 +70,19 @@ export function HomeContent() {
             })
           );
 
-          console.log("tokenAccounts found: ", tokenAccounts.value.length);
           setTotalAccounts(tokenAccounts.value.length);
           const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount: { account: { data: { parsed: { info: { mint: any; tokenAmount: { uiAmount: any; decimals: any; }; }; }; }; }; }) => {
             const mintAddress = tokenAccount.account.data.parsed.info.mint;
             const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
             const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
+
+            const [tokenAccountAddress] = await PublicKey.findProgramAddress(
+              [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), new PublicKey(mintAddress).toBuffer()],
+              ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+  
+            console.log("tokenAccount found: ", tokenAccountAddress.toString());
+
             const jupiterPrice = await apiLimiter.schedule(() =>
               fetchJupiterSwap(mintAddress)
             );
@@ -82,9 +91,10 @@ export function HomeContent() {
             const price = jupiterPrice.data[mintAddress]?.price || 0;
             const usdValue = amount * price;
             setTotalValue(totalValue += usdValue)
-            console.log(totalValue)
+            console.log(metadata)
             return {
               mintAddress,
+              tokenAddress: tokenAccountAddress.toString(),
               amount,
               decimals,
               ...metadata,
@@ -124,6 +134,8 @@ export function HomeContent() {
         const token = await rpcLimiter.schedule(() =>
           metaplex.nfts().findByMint({ mintAddress: mintAddress })
         );
+        // console.log(`token: ${JSON.stringify(token)}`);
+
         const cid = extractCidFromUrl(token.uri);
         if (cid) {
           console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
