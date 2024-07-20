@@ -70,12 +70,23 @@ export function ItemList({ items }: Props) {
           throw new Error("Failed to fetch quote");
         }
 
+        let referralAccountPubkey = new PublicKey('2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE');
+        const [feeAccount] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("referral_ata"),
+            referralAccountPubkey.toBuffer(),
+            new PublicKey(targetTokenMintAddress).toBuffer(),
+          ],
+          new PublicKey("REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3")
+        );
+
         const swapObj = await jupiterQuoteApi.swapPost({
           swapRequest: {
             quoteResponse: quote,
             userPublicKey: publicKey.toBase58(),
             dynamicComputeUnitLimit: true,
             prioritizationFeeLamports: "auto",
+            feeAccount: feeAccount.toBase58(),
           },
         });
 
