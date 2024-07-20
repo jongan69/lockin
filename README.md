@@ -55,19 +55,20 @@ We also added the [react-hot-toast](https://react-hot-toast.com/) library for vi
 ## Getting Started
 
 1. Get an API key from [Helius](https://helius.xyz/). This is necessary to fetch wallet details.
-2. Run `npx create-next-app -e https://github.com/aeminium-labs/nextjs-solana-starter-kit` to set up this template locally (you can also click on the "Use this template" button or fork the repository).
-3. Add a `.env.local` file with your Helius API key:
+2. Add a `.env.local` file with your Helius API key:
 
 ```
 HELIUS_API_KEY=<your key>
+NEXT_PUBLIC_SOLANA_RPC_ENDPOINT=https://mainnet.helius-rpc.com/?api-key=<your key>
+UNKNOWN_IMAGE_URL=https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png
 ```
 
-4. Run `npm run dev` to start the development server.
+4. Run `yarn dev` to start the development server.
 5. Make changes and have fun!
 
 ## Deploying
 
-1. Run `npm run build` locally to ensure everything compiles correctly.
+1. Run `yarn build` locally to ensure everything compiles correctly.
 2. Link your favorite server provider to your repository (we use Vercel for the demo).
 3. Any push to the `main` branch will automatically deploy a new version.
 
