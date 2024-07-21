@@ -187,6 +187,7 @@ export function HomeContent() {
         </div>
       ) : (
         <div className="text-center">
+          <p className="text-center p-4"> This app allows users to convert SPL Tokens to $Lockin and will close their token account for returning rent.</p>
           {!publicKey && (
             <div className="card border-2 border-primary mb-5">
               <div className="card-body items-center">
@@ -207,8 +208,8 @@ export function HomeContent() {
           )}
         </div>
       )}
-      {balance > 0 && <p className="text-center">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
+      {balance > 0 && <p className="text-center p-4">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
       {/* {error && <p>Balance Errror: {error}</p>} */}
-    </div> 
+    </div>
   );
 }
