@@ -63,8 +63,8 @@ export function ItemList({ initialItems }: Props) {
           return;
         }
 
-        if(selectedItem.usdValue === 0){
-          alert("Congrats, this is Dogshit, swap could not be done. Get to raydium then talk to me.");
+        if (selectedItem.usdValue === 0 && balanceInSmallestUnit !== 0) {
+          alert("Congrats, this is Dogshit, swap could not be done. Get it to raydium or burn it.");
           setShowPopup(false);
           return
         }
@@ -152,8 +152,8 @@ export function ItemList({ initialItems }: Props) {
 
   useEffect(() => {
     const sortedItems = [...items]
-    .filter(item => !closedAccounts.has(item.tokenAddress))
-    .sort((a, b) => b.usdValue - a.usdValue);
+      .filter(item => !closedAccounts.has(item.tokenAddress))
+      .sort((a, b) => b.usdValue - a.usdValue);
 
 
     setSortedItems(sortedItems);
@@ -170,7 +170,7 @@ export function ItemList({ initialItems }: Props) {
               key={index}
               onClick={() => handleItemClick(item)}
               className="transform transition-transform duration-300 hover:scale-105 custom-lock-cursor"
-              >
+            >
               <Item data={item} />
             </div>
           ))
