@@ -207,7 +207,7 @@ export function HomeContent() {
           )}
         </div>
       )}
-      {balance && balance > 0 && <p className="text-center">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
+      {balance > 0 && <p className="text-center">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
       {/* {error && <p>Balance Errror: {error}</p>} */}
     </div> 
   );
