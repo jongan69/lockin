@@ -1,20 +1,23 @@
 import { Item, ItemData } from "@components/home/item";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
-import React, { useState } from "react";
+import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest } from '@jup-ag/api';
 import { useCloseTokenAccount } from "../../utils/hooks/useCloseTokenAccount"; // Adjust the path as needed
 import { DEFAULT_TOKEN, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
 
 type Props = {
-  items: Array<ItemData>;
+  initialItems: Array<ItemData>;
 };
 
-export function ItemList({ items }: Props) {
+export function ItemList({ initialItems }: Props) {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
   const { connection } = useConnection();
   const { closeTokenAccount } = useCloseTokenAccount();
+  const [items] = useState<ItemData[]>(initialItems);
+  const [closedAccounts, setClosedAccounts] = useState<Set<string>>(new Set());
+  const [sortedItems, setSortedItems] = useState<ItemData[]>(initialItems);
   const [selectedItem, setSelectedItem] = useState<ItemData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,13 +53,20 @@ export function ItemList({ items }: Props) {
 
         if (balanceInSmallestUnit === 0) {
           // Close the token account if no tokens
-          console.log(`Closing token account for ${selectedItem.symbol}: ${selectedItem.mintAddress}`);
+          console.log(`No tokens to swap for lockin, skipping and Closing token account for ${selectedItem.symbol}: ${selectedItem.mintAddress}`);
           await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
+          setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
           setShowPopup(false);
           setSelectedItem(null);
           toast.success("Token account closed successfully!");
           setSending(false);
           return;
+        }
+
+        if(selectedItem.usdValue === 0){
+          alert("Congrats, this is Dogshit, swap could not be done. Get to raydium then talk to me.");
+          setShowPopup(false);
+          return
         }
 
         console.log(`Swapping ${balanceInSmallestUnit} ${selectedItem.symbol} for ${targetTokenMintAddress}`);
@@ -114,9 +124,7 @@ export function ItemList({ items }: Props) {
         }
 
         setMessage('Sending transaction...');
-
         const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
-
         const signature = await sendTransaction(signedTransaction, connection, { minContextSlot });
 
         setMessage('Transaction confirmed successfully!');
@@ -125,6 +133,7 @@ export function ItemList({ items }: Props) {
 
         // Close the token account after the swap
         await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
+        setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
 
         setShowPopup(false);
         setSelectedItem(null);
@@ -141,12 +150,19 @@ export function ItemList({ items }: Props) {
     }
   };
 
-  const sortedItems = [...items].sort((a, b) => b.usdValue - a.usdValue);
+  useEffect(() => {
+    const sortedItems = [...items]
+    .filter(item => !closedAccounts.has(item.tokenAddress))
+    .sort((a, b) => b.usdValue - a.usdValue);
+
+
+    setSortedItems(sortedItems);
+  }, [closedAccounts]);
 
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {items.length === 0 ? (
+        {items.length === 0 || !sortedItems ? (
           <p className="p-4">No Coins found in your wallet</p>
         ) : (
           sortedItems.map((item, index) => (

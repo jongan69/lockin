@@ -49,7 +49,7 @@ export function HomeContent() {
   const prevPublicKey = React.useRef<string>(publicKey?.toBase58() || "");
   const [loading, setLoading] = useState<boolean>(false);
   const [totalAccounts, setTotalAccounts] = useState<number>(0);
-  const { balance, error } = useTokenBalance(FEE_ADDRESS);
+  const { balance } = useTokenBalance(FEE_ADDRESS);
 
   let [totalValue, setTotalValue] = useState<number>(0);
 
@@ -183,7 +183,7 @@ export function HomeContent() {
         <div>
           <h2 className="text-center text-primary m-10">{totalAccounts} Token Accounts</h2>
           <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
-          <ItemList items={tokens} />
+          <ItemList initialItems={tokens} />
         </div>
       ) : (
         <div className="text-center">
@@ -201,7 +201,7 @@ export function HomeContent() {
             <div className="card border-2 border-primary mb-5">
               <div className="card-body items-center text-center">
                 <h2 className="card-title text-center mb-2">
-                  {`Please Disconnect and reconnect your wallet. \nYou might need to reload the page. \nYou might have too many fucking tokens AND WE'RE BEING RATE LIMITED, shoutout bald guy Mert.`}
+                  {`Please Disconnect and reconnect your wallet. \nYou might need to reload the page. \nYou might have too many fucking tokens AND WE'RE BEING RATE LIMITED. \n Thank you for locking in 🔒`}
                 </h2>
               </div>
             </div>

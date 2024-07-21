@@ -26,13 +26,13 @@ const ImageComponent = ({ cid, alt, logo }: ImageProps) => {
   const [src, setSrc] = useState<string>(DEFAULT_IMAGE_URL);
 
   useEffect(() => {
-    if (cid) {
+    if (cid && !logo) {
       const imageUrl = `https://ipfs.io/ipfs/${cid}`;
       setSrc(imageUrl);
     } else if (logo) {
       setSrc(logo);
     }
-  }, [cid]);
+  }, [cid, logo, alt]);
 
   const handleError = () => {
     setSrc(DEFAULT_IMAGE_URL);

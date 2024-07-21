@@ -51,7 +51,7 @@ export const useCloseTokenAccount = () => {
         signature
       });
 
-      console.log("Token account closed:", signature);
+      console.log("Token account closed with signature:", signature);
       toast.success("Token account closed successfully!");
       return signature;
     } catch (error) {
