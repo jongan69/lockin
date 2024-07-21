@@ -169,8 +169,8 @@ export function ItemList({ initialItems }: Props) {
             <div
               key={index}
               onClick={() => handleItemClick(item)}
-              className="transform transition-transform duration-300 hover:scale-105 cursor-pointer"
-            >
+              className="transform transition-transform duration-300 hover:scale-105 custom-lock-cursor"
+              >
               <Item data={item} />
             </div>
           ))

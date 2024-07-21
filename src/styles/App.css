@@ -58,3 +58,11 @@ code {
   border-right-color: #eed;
   border-top-color: #ccb;
 }
+
+/* .custom-lock-cursor:hover {
+  cursor: url('../../public/lock.png') 16 16, auto;
+} */
+
+.custom-lock-cursor {
+  cursor: crosshair;
+}

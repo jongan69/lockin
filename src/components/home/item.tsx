@@ -48,8 +48,10 @@ type ItemProps = {
 export function Item({ data }: ItemProps) {
   const { name, symbol, amount, logo, usdValue, cid } = data;
 
+  const cardClass = `card shadow-xl bg-neutral text-neutral-content ${usdValue === 0 ? 'border-red-500 border-4' : ''}`;
+
   return (
-    <div className="card shadow-xl bg-neutral text-neutral-content">
+    <div className={cardClass}>
       {logo && (
         <figure className="relative h-80">
           <ImageComponent cid={cid} logo={logo} alt={`Picture of ${name}`} />
