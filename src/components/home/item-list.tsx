@@ -69,7 +69,6 @@ export function ItemList({ initialItems, totalValue }: Props) {
           }
           const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
           console.log(`Balance: ${selectedItem.amount} ${selectedItem.symbol} , ${selectedItem.decimals} Decimals`);
-          console.log(`Should Close Account: ${selectedItem.amount < 0.000001}`);
           if (balanceInSmallestUnit === 0) {
             await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
             setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
