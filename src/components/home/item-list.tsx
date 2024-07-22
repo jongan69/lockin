@@ -6,12 +6,14 @@ import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest } from '@jup-ag/api';
 import { useCloseTokenAccount } from "../../utils/hooks/useCloseTokenAccount"; // Adjust the path as needed
 import { DEFAULT_TOKEN, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
+import { amount } from "@metaplex-foundation/js";
 
 type Props = {
   initialItems: Array<ItemData>;
+  totalValue: number;
 };
 
-export function ItemList({ initialItems }: Props) {
+export function ItemList({ initialItems, totalValue }: Props) {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
   const { connection } = useConnection();
   const { closeTokenAccount } = useCloseTokenAccount();
@@ -65,8 +67,9 @@ export function ItemList({ initialItems }: Props) {
             handleClosePopup(false);
             return;
           }
-
           const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
+          console.log(`Balance: ${selectedItem.amount} ${selectedItem.symbol} , ${selectedItem.decimals} Decimals`);
+          console.log(`Should Close Account: ${selectedItem.amount < 0.000001}`);
           if (balanceInSmallestUnit === 0) {
             await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
             setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
@@ -169,6 +172,8 @@ export function ItemList({ initialItems }: Props) {
 
   return (
     <div>
+      <h2 className="text-center text-primary m-10">{sortedItems.length} Token Accounts</h2>
+      <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (
           <p className="p-4">No Coins found in your wallet</p>

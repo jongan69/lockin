@@ -42,6 +42,28 @@ type TokenData = {
   usdValue: number;
 };
 
+// function convertScientificNotation(input: any) {
+//   try {
+//       let number = parseFloat(input);
+//       if (isNaN(number)) throw new Error("Invalid input");
+
+//       // Check if the input contains 'e' or 'E' indicating scientific notation
+//       if (input.toLowerCase().includes('e')) {
+//           // Convert number to string with a large number of decimal places
+//           let numberStr = number.toPrecision(100);
+
+//           // Remove trailing zeros and decimal point if necessary
+//           numberStr = numberStr.replace(/(\.0+|(?<=\.\d*?)0+)$/, '');
+
+//           return numberStr;
+//       } else {
+//           return input.toString();
+//       }
+//   } catch (error) {
+//       return "Invalid input";
+//   }
+// }
+
 export function HomeContent() {
   const { publicKey, signTransaction } = useWallet();
   const [signState, setSignState] = useState<string>("initial");
@@ -77,7 +99,7 @@ export function HomeContent() {
           setTotalAccounts(tokenAccounts.value.length);
           const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount: { account: { data: { parsed: { info: { mint: any; tokenAmount: { uiAmount: any; decimals: any; }; }; }; }; }; }) => {
             const mintAddress = tokenAccount.account.data.parsed.info.mint;
-            const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
+            const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
             const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
 
             const [tokenAccountAddress] = await PublicKey.findProgramAddress(
@@ -93,7 +115,8 @@ export function HomeContent() {
             const price = jupiterPrice.data[mintAddress]?.price || 0;
             const usdValue = amount * price;
             setTotalValue(totalValue += usdValue)
-            console.log(metadata)
+            console.log(`Found ${amount} ${metadata?.name} of ${metadata?.name} worth ${usdValue}`);
+
             return {
               mintAddress,
               tokenAddress: tokenAccountAddress.toString(),
@@ -138,7 +161,7 @@ export function HomeContent() {
         );
         const cid = extractCidFromUrl(token.uri);
         if (cid) {
-          console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
+          // console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
           const newMetadata = await apiLimiter.schedule(() => fetchIpfsMetadata(cid));
           return {
             name: token?.name,
@@ -181,9 +204,7 @@ export function HomeContent() {
     <div className="grid grid-cols-1">
       {hasFetchedData ? (
         <div>
-          <h2 className="text-center text-primary m-10">{totalAccounts} Token Accounts</h2>
-          <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
-          <ItemList initialItems={tokens} />
+          <ItemList initialItems={tokens} totalValue={totalValue}/>
         </div>
       ) : (
         <div className="text-center">

@@ -25,7 +25,7 @@ const useTokenBalance = (tokenAccountAddress: string) => {
         const tokenAccountBalance = await rpcLimiter.schedule(() =>
           connection.getTokenAccountBalance(tokenAccount)
         );
-        console.log("tokenAccountBalance", tokenAccountBalance);
+        // console.log("tokenAccountBalance", tokenAccountBalance);
 
         if (tokenAccountBalance) {
           const tokenBalance = tokenAccountBalance.value.uiAmount || 0;

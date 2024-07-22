@@ -60,7 +60,7 @@ export function Item({ data }: ItemProps) {
       <div className="card-body p-4 items-center text-center">
         <h2 className="card-title m-0">{name}</h2>
         <p>
-          {symbol}: {amount} (≈ ${usdValue})
+          {symbol}: {Number(amount).toFixed(5)}(≈ ${usdValue})
         </p>
       </div>
     </div>
