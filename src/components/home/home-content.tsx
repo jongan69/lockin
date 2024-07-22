@@ -11,7 +11,7 @@ import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
 import Bottleneck from "bottleneck";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import useTokenBalance from "@utils/hooks/useTokenBalance";
-import { DEFAULT_TOKEN, FEE_ADDRESS, REFERAL_WALLET, TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
+import { FEE_ADDRESS, TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
 
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
 const connection = new Connection(RPC_ENDPOINT);
