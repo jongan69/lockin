@@ -66,7 +66,7 @@ export function ItemList({ initialItems }: Props) {
             return;
           }
 
-          const balanceInSmallestUnit = Math.floor(selectedItem.amount * Math.pow(10, selectedItem.decimals));
+          const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
           if (balanceInSmallestUnit === 0) {
             await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
             setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
@@ -87,56 +87,61 @@ export function ItemList({ initialItems }: Props) {
             asLegacyTransaction: false,
           };
 
-          const quote = await jupiterQuoteApi.quoteGet(params);
+          try {
+            const quote = await jupiterQuoteApi.quoteGet(params);
 
-          console.log("quote", quote);
+            console.log("quote", quote);
 
-          if (!quote) {
-            throw new Error("Failed to fetch quote");
+            if (!quote) {
+              throw new Error("Failed to fetch quote");
+            }
+
+            const [feeAccount] = PublicKey.findProgramAddressSync(
+              [
+                Buffer.from("referral_ata"),
+                referralAccountPubkey.toBuffer(),
+                targetTokenMintPubkey.toBuffer(),
+              ],
+              referralProgramId
+            );
+
+            const swapObj = await jupiterQuoteApi.swapPost({
+              swapRequest: {
+                quoteResponse: quote,
+                userPublicKey: publicKey.toBase58(),
+                dynamicComputeUnitLimit: true,
+                prioritizationFeeLamports: "auto",
+                feeAccount: feeAccount.toBase58(),
+              },
+            });
+
+            if (!swapObj) {
+              throw new Error("Swap API request failed");
+            }
+
+            const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
+            const tx = VersionedTransaction.deserialize(swapTransactionBuf);
+            const signedTransaction = await signTransaction(tx);
+
+            setMessage('Simulating transaction...');
+            const simulationResult = await connection.simulateTransaction(signedTransaction);
+            if (simulationResult.value.err) {
+              throw new Error("Transaction simulation failed");
+            }
+
+            setMessage('Sending transaction...');
+            const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
+            await sendTransaction(signedTransaction, connection, { minContextSlot });
+
+            setMessage('Transaction confirmed successfully!');
+            toast.success('Transaction confirmed successfully!');
+
+            await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
+            setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
+          } catch (error) {
+            console.error(`Skipping token ${selectedItem.symbol} due to error:`, error);
+            toast.error(`Skipping token ${selectedItem.symbol} due to error.`);
           }
-
-          const [feeAccount] = PublicKey.findProgramAddressSync(
-            [
-              Buffer.from("referral_ata"),
-              referralAccountPubkey.toBuffer(),
-              targetTokenMintPubkey.toBuffer(),
-            ],
-            referralProgramId
-          );
-
-          const swapObj = await jupiterQuoteApi.swapPost({
-            swapRequest: {
-              quoteResponse: quote,
-              userPublicKey: publicKey.toBase58(),
-              dynamicComputeUnitLimit: true,
-              prioritizationFeeLamports: "auto",
-              feeAccount: feeAccount.toBase58(),
-            },
-          });
-
-          if (!swapObj) {
-            throw new Error("Swap API request failed");
-          }
-
-          const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-          const tx = VersionedTransaction.deserialize(swapTransactionBuf);
-          const signedTransaction = await signTransaction(tx);
-
-          setMessage('Simulating transaction...');
-          const simulationResult = await connection.simulateTransaction(signedTransaction);
-          if (simulationResult.value.err) {
-            throw new Error("Transaction simulation failed");
-          }
-
-          setMessage('Sending transaction...');
-          const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
-          await sendTransaction(signedTransaction, connection, { minContextSlot });
-
-          setMessage('Transaction confirmed successfully!');
-          toast.success('Transaction confirmed successfully!');
-
-          await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
-          setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
         }
 
         setShowPopup(false);
