@@ -16,7 +16,8 @@ export const useTokenOperations = (
   referralProgramId: PublicKey,
   raydiumUrl: string,
   setShowPopup: (show: boolean) => void,
-  setSelectedItems: (items: Set<any>) => void
+  setSelectedItems: (items: Set<any>) => void,
+  closedAccounts: Set<string>
 ) => {
   const [sending, setSending] = useState(false);
   const { closeTokenAccount } = useCloseTokenAccount();
@@ -47,6 +48,7 @@ export const useTokenOperations = (
           if (balanceInSmallestUnit === 0) {
             const closeInstr = await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
             transactionInstructions.push(closeInstr);
+            closedAccounts.add(selectedItem);
             continue;
           }
 
@@ -84,9 +86,13 @@ export const useTokenOperations = (
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              quoteResponse: quote,
               userPublicKey: publicKey.toBase58(),
+              wrapAndUnwrapSol: true,
+              useSharedAccounts: true,
               feeAccount: feeAccount.toBase58(),
+              quoteResponse: quote,
+              dynamicComputeUnitLimit: true,
+              skipUserAccountsRpcCalls: true
             })
           });
 
@@ -141,7 +147,6 @@ export const useTokenOperations = (
             addressLookupTableAccounts = await getAddressLookupTableAccounts(addressLookupTableAddresses);
           }
 
-          const { blockhash } = await connection.getLatestBlockhash();
           const instructionsList: TransactionInstruction[] = [
             ...(setupInstructions ? setupInstructions.map(deserializeInstruction) : []),
             deserializeInstruction(swapInstructionPayload),
@@ -158,6 +163,7 @@ export const useTokenOperations = (
 
           const closeAccountInstr = await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
           transactionInstructions.push(closeAccountInstr);
+          closedAccounts.add(selectedItem);
         }
 
         if (transactionInstructions.length > 0) {
@@ -167,6 +173,7 @@ export const useTokenOperations = (
 
         setMessage(`Transaction confirmed successfully! ${transactionCount} transactions were sent.`);
         toast.success('Transaction confirmed successfully!');
+        setShowPopup(false);
       } catch (error: any) {
         console.error("Error during transaction:", error.toString());
         setErrorMessage(`Transaction failed: ${error}`);
@@ -195,26 +202,44 @@ export const useTokenOperations = (
 
   const sendTransactionBatch = async (instructions: TransactionInstruction[], addressLookupTableAccounts: AddressLookupTableAccount[] | undefined, publicKey: PublicKey, signTransaction: (arg0: VersionedTransaction) => any, connection: Connection, setMessage: (msg: string) => void, sendTransaction: (arg0: any, arg1: any, arg2: { minContextSlot: any; }) => any) => {
     try {
-      const { blockhash } = await connection.getLatestBlockhash();
-      const messageV0 = new TransactionMessage({
-        payerKey: new PublicKey(publicKey),
-        recentBlockhash: blockhash,
-        instructions,
-      }).compileToV0Message(addressLookupTableAccounts);
+      const instructionChunks: TransactionInstruction[][] = [];
+      let currentChunk: TransactionInstruction[] = [];
 
-      const transaction = new VersionedTransaction(messageV0);
-      const signedTransaction = await signTransaction(transaction);
-
-      setMessage('Simulating transaction...');
-      const simulationResult = await connection.simulateTransaction(signedTransaction, { commitment: 'recent' });
-      if (simulationResult.value.err) {
-        console.error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
-        throw new Error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
+      for (const instruction of instructions) {
+        const estimatedSize = currentChunk.reduce((acc, instr) => acc + instr.data.length, 0) + instruction.data.length;
+        if (estimatedSize > 1232) { // 1232 bytes is the raw size limit for a transaction
+          instructionChunks.push(currentChunk);
+          currentChunk = [];
+        }
+        currentChunk.push(instruction);
       }
 
-      setMessage('Sending transaction...');
-      const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
-      await sendTransaction(signedTransaction, connection, { minContextSlot });
+      if (currentChunk.length > 0) {
+        instructionChunks.push(currentChunk);
+      }
+
+      for (const chunk of instructionChunks) {
+        const { blockhash } = await connection.getLatestBlockhash({ commitment: "confirmed" });
+        const messageV0 = new TransactionMessage({
+          payerKey: new PublicKey(publicKey),
+          recentBlockhash: blockhash,
+          instructions: chunk,
+        }).compileToV0Message(addressLookupTableAccounts);
+
+        const transaction = new VersionedTransaction(messageV0);
+        const signedTransaction = await signTransaction(transaction);
+
+        setMessage('Simulating transaction...');
+        const simulationResult = await connection.simulateTransaction(signedTransaction, { commitment: 'confirmed' });
+        if (simulationResult.value.err) {
+          console.error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
+          throw new Error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
+        }
+
+        setMessage('Sending transaction...');
+        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext({ commitment: "confirmed" });
+        await sendTransaction(signedTransaction, connection, { minContextSlot });
+      }
     } catch (error: any) {
       console.error("Error during transaction batch send:", error.toString());
       console.log("Failed Instructions:", instructions); // Log the instructions causing the error

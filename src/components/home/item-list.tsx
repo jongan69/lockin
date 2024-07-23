@@ -36,7 +36,8 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     referralProgramId,
     raydiumUrl,
     setShowPopup,
-    setSelectedItems
+    setSelectedItems,
+    closedAccounts
   );
 
   const handleItemClick = (item: ItemData) => {
