@@ -17,7 +17,8 @@ export const useTokenOperations = (
   raydiumUrl: string,
   setShowPopup: (show: boolean) => void,
   setSelectedItems: (items: Set<any>) => void,
-  closedAccounts: Set<string>
+  closedTokenAccounts: any,
+  setClosedTokenAccounts: any,
 ) => {
   const [sending, setSending] = useState(false);
   const { closeTokenAccount } = useCloseTokenAccount();
@@ -48,7 +49,7 @@ export const useTokenOperations = (
           if (balanceInSmallestUnit === 0) {
             const closeInstr = await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
             transactionInstructions.push(closeInstr);
-            closedAccounts.add(selectedItem);
+            setClosedTokenAccounts((prev: Iterable<unknown> | null | undefined) => new Set(prev).add(selectedItem.tokenAddress));
             continue;
           }
 
@@ -163,7 +164,7 @@ export const useTokenOperations = (
 
           const closeAccountInstr = await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
           transactionInstructions.push(closeAccountInstr);
-          closedAccounts.add(selectedItem);
+          setClosedTokenAccounts((prev: Iterable<unknown> | null | undefined) => new Set(prev).add(selectedItem.tokenAddress));
         }
 
         if (transactionInstructions.length > 0) {
@@ -197,8 +198,7 @@ export const useTokenOperations = (
     setSelectedItems,
     closeTokenAccount,
     jupiterQuoteApi,
-    sendTransaction,
-    closedAccounts
+    sendTransaction
   ]);
 
   const sendTransactionBatch = async (instructions: TransactionInstruction[], addressLookupTableAccounts: AddressLookupTableAccount[] | undefined, publicKey: PublicKey, signTransaction: (arg0: VersionedTransaction) => any, connection: Connection, setMessage: (msg: string) => void, sendTransaction: (arg0: any, arg1: any, arg2: { minContextSlot: any; }) => any) => {
@@ -208,6 +208,7 @@ export const useTokenOperations = (
 
       for (const instruction of instructions) {
         const estimatedSize = currentChunk.reduce((acc, instr) => acc + instr.data.length, 0) + instruction.data.length;
+        console.log(`Estimated byte size of instruction: ${estimatedSize}`);
         if (estimatedSize > 1232) { // 1232 bytes is the raw size limit for a transaction
           instructionChunks.push(currentChunk);
           currentChunk = [];
@@ -220,7 +221,7 @@ export const useTokenOperations = (
       }
 
       for (const chunk of instructionChunks) {
-        const { blockhash } = await connection.getLatestBlockhash({ commitment: "confirmed" });
+        const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
         const messageV0 = new TransactionMessage({
           payerKey: new PublicKey(publicKey),
           recentBlockhash: blockhash,
@@ -230,15 +231,15 @@ export const useTokenOperations = (
         const transaction = new VersionedTransaction(messageV0);
         const signedTransaction = await signTransaction(transaction);
 
-        setMessage('Simulating transaction...');
-        const simulationResult = await connection.simulateTransaction(signedTransaction, { commitment: 'confirmed' });
-        if (simulationResult.value.err) {
-          console.error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
-          throw new Error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
-        }
+        // setMessage('Simulating transaction...');
+        // const simulationResult = await connection.simulateTransaction(signedTransaction, { commitment: 'processed' });
+        // if (simulationResult.value.err) {
+        //   console.error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
+        //   throw new Error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`);
+        // }
 
         setMessage('Sending transaction...');
-        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext({ commitment: "confirmed" });
+        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext({ commitment: 'processed' });
         await sendTransaction(signedTransaction, connection, { minContextSlot });
       }
     } catch (error: any) {

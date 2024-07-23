@@ -15,9 +15,10 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
   const { connection } = useConnection();
   const [items] = useState<ItemData[]>(initialItems);
-  const [closedAccounts] = useState<Set<string>>(new Set());
   const [sortedItems, setSortedItems] = useState<ItemData[]>(initialItems);
   const [selectedItems, setSelectedItems] = useState<Set<ItemData>>(new Set());
+  const [closedTokenAccounts, setClosedTokenAccounts] = useState(new Set());
+
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -37,7 +38,8 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     raydiumUrl,
     setShowPopup,
     setSelectedItems,
-    closedAccounts
+    closedTokenAccounts,
+    setClosedTokenAccounts
   );
 
   const handleItemClick = (item: ItemData) => {
@@ -63,11 +65,11 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   useEffect(() => {
     const sortedItems = [...items]
-      .filter(item => !closedAccounts.has(item.tokenAddress))
+      .filter(item => !closedTokenAccounts.has(item.tokenAddress))
       .sort((a, b) => b.usdValue - a.usdValue);
 
     setSortedItems(sortedItems);
-  }, [closedAccounts, items]);
+  }, [closedTokenAccounts, items]);
 
   return (
     <div>
