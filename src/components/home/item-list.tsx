@@ -66,7 +66,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       .sort((a, b) => b.usdValue - a.usdValue);
 
     setSortedItems(sortedItems);
-  }, [closedAccounts]);
+  }, [closedAccounts, items]);
 
   return (
     <div>

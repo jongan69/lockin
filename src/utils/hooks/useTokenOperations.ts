@@ -7,7 +7,7 @@ import { createJupiterApiClient, QuoteGetRequest } from "@jup-ag/api";
 const MAX_INSTRUCTIONS_PER_TX = 5;
 
 export const useTokenOperations = (
-  publicKey: PublicKey,
+  publicKey: PublicKey | null,
   connection: Connection,
   signTransaction: any,
   sendTransaction: any,
@@ -64,6 +64,15 @@ export const useTokenOperations = (
             asLegacyTransaction: false,
           };
 
+          const [feeAccount] = PublicKey.findProgramAddressSync(
+            [
+              Buffer.from("referral_ata"),
+              referralAccountPubkey.toBuffer(),
+              new PublicKey(targetTokenMintAddress).toBuffer(),
+            ],
+            referralProgramId
+          );
+
           const quote = await jupiterQuoteApi.quoteGet(params);
           if (!quote) {
             throw new Error("Failed to fetch quote");
@@ -77,6 +86,7 @@ export const useTokenOperations = (
             body: JSON.stringify({
               quoteResponse: quote,
               userPublicKey: publicKey.toBase58(),
+              feeAccount: feeAccount.toBase58(),
             })
           });
 
@@ -178,7 +188,9 @@ export const useTokenOperations = (
     referralProgramId,
     raydiumUrl,
     setSelectedItems,
-    closeTokenAccount
+    closeTokenAccount,
+    jupiterQuoteApi,
+    sendTransaction
   ]);
 
   const sendTransactionBatch = async (instructions: TransactionInstruction[], addressLookupTableAccounts: AddressLookupTableAccount[] | undefined, publicKey: PublicKey, signTransaction: (arg0: VersionedTransaction) => any, connection: Connection, setMessage: (msg: string) => void, sendTransaction: (arg0: any, arg1: any, arg2: { minContextSlot: any; }) => any) => {

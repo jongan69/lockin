@@ -40,7 +40,7 @@ const useTokenBalance = (tokenAccountAddress: string) => {
     };
 
     fetchBalance();
-  }, [tokenAccountAddress]);
+  }, [tokenAccountAddress, connection]);
 
   return { balance, balanceLoading, error };
 };
