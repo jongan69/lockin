@@ -15,7 +15,7 @@ const DEFAULT_IMAGE_URL = process.env.UNKNOWN_IMAGE_URL || "https://s3.coinmarke
 
 // Rate limiters
 const rpcLimiter = new Bottleneck({ maxConcurrent: 10, minTime: 100 });
-export const apiLimiter = new Bottleneck({ maxConcurrent: 10, minTime: 100 });
+export const apiLimiter = new Bottleneck({ maxConcurrent: 5, minTime: 100 });
 
 export type TokenData = {
   decimals: number;
