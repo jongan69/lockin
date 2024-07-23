@@ -1,79 +1,21 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ItemList } from "@components/home/item-list";
 import { toast } from "react-hot-toast";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { Metaplex } from "@metaplex-foundation/js";
 import { Circles } from "react-loader-spinner";
-import { fetchIpfsMetadata } from "../../utils/fetchIpfsMetadata";
-import { extractCidFromUrl } from "../../utils/extractCidFromUrl";
-import { fetchJupiterSwap } from "../../utils/fetchJupiterSwap";
-import Bottleneck from "bottleneck";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import useTokenBalance from "@utils/hooks/useTokenBalance";
-import { FEE_ADDRESS, TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
-
-const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
-const connection = new Connection(RPC_ENDPOINT);
-const metaplex = Metaplex.make(connection);
-const DEFAULT_IMAGE_URL =
-  process.env.UNKNOWN_IMAGE_URL ||
-  "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
-
-// Rate limiters
-const rpcLimiter = new Bottleneck({
-  maxConcurrent: 10,
-  minTime: 100,
-});
-
-const apiLimiter = new Bottleneck({
-  maxConcurrent: 5,
-  minTime: 100,
-});
-
-type TokenData = {
-  decimals: number;
-  mintAddress: string;
-  tokenAddress: string;
-  name?: string;
-  amount: number;
-  symbol?: string;
-  logo?: string;
-  usdValue: number;
-};
-
-// function convertScientificNotation(input: any) {
-//   try {
-//       let number = parseFloat(input);
-//       if (isNaN(number)) throw new Error("Invalid input");
-
-//       // Check if the input contains 'e' or 'E' indicating scientific notation
-//       if (input.toLowerCase().includes('e')) {
-//           // Convert number to string with a large number of decimal places
-//           let numberStr = number.toPrecision(100);
-
-//           // Remove trailing zeros and decimal point if necessary
-//           numberStr = numberStr.replace(/(\.0+|(?<=\.\d*?)0+)$/, '');
-
-//           return numberStr;
-//       } else {
-//           return input.toString();
-//       }
-//   } catch (error) {
-//       return "Invalid input";
-//   }
-// }
+import { FEE_ADDRESS } from "@utils/globals";
+import { apiLimiter, fetchTokenAccounts, handleTokenData, TokenData } from "../../utils/tokenUtils";
 
 export function HomeContent() {
   const { publicKey, signTransaction } = useWallet();
   const [signState, setSignState] = useState<string>("initial");
   const [tokens, setTokens] = useState<TokenData[]>([]);
-  const prevPublicKey = React.useRef<string>(publicKey?.toBase58() || "");
+  const prevPublicKey = useRef<string>(publicKey?.toBase58() || "");
   const [loading, setLoading] = useState<boolean>(false);
   const [totalAccounts, setTotalAccounts] = useState<number>(0);
   const { balance } = useTokenBalance(FEE_ADDRESS);
-
-  let [totalValue, setTotalValue] = useState<number>(0);
+  const [totalValue, setTotalValue] = useState<number>(0);
 
   useEffect(() => {
     if (publicKey && publicKey.toBase58() !== prevPublicKey.current) {
@@ -82,56 +24,33 @@ export function HomeContent() {
     }
   }, [publicKey]);
 
+  const updateTotalValue = (usdValue: number) => {
+    setTotalValue((prevValue) => prevValue + usdValue);
+  };
+
   useEffect(() => {
-    async function sign() {
+    const sign = async () => {
       if (publicKey && signTransaction && signState === "initial") {
         setLoading(true);
         setSignState("loading");
         const signToastId = toast.loading("Getting Token Data...");
 
         try {
-          const tokenAccounts = await rpcLimiter.schedule(() =>
-            connection.getParsedTokenAccountsByOwner(publicKey, {
-              programId: TOKEN_PROGRAM_ID_ADDRESS,
+          const tokenAccounts = await fetchTokenAccounts(publicKey);
+          setTotalAccounts(tokenAccounts.value.length);
+
+          const tokenDataPromises = tokenAccounts.value.map((tokenAccount) =>
+            handleTokenData(publicKey, tokenAccount, apiLimiter).then((tokenData) => {
+              updateTotalValue(tokenData.usdValue);
+              return tokenData;
             })
           );
-
-          setTotalAccounts(tokenAccounts.value.length);
-          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount: { account: { data: { parsed: { info: { mint: any; tokenAmount: { uiAmount: any; decimals: any; }; }; }; }; }; }) => {
-            const mintAddress = tokenAccount.account.data.parsed.info.mint;
-            const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
-            const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
-
-            const [tokenAccountAddress] = await PublicKey.findProgramAddress(
-              [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), new PublicKey(mintAddress).toBuffer()],
-              ASSOCIATED_TOKEN_PROGRAM_ID
-            );
-
-            const jupiterPrice = await apiLimiter.schedule(() =>
-              fetchJupiterSwap(mintAddress)
-            );
-
-            const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
-            const price = jupiterPrice.data[mintAddress]?.price || 0;
-            const usdValue = amount * price;
-            setTotalValue(totalValue += usdValue)
-            console.log(`Found ${amount} ${metadata?.name} of ${metadata?.name} worth ${usdValue}`);
-
-            return {
-              mintAddress,
-              tokenAddress: tokenAccountAddress.toString(),
-              amount,
-              decimals,
-              ...metadata,
-              usdValue: usdValue,
-            };
-          });
 
           const tokens = await Promise.all(tokenDataPromises);
           setTokens(tokens);
           setSignState("success");
           toast.success("Token Data Retrieved", { id: signToastId });
-        } catch (error: any) {
+        } catch (error) {
           setSignState("error");
           toast.error("Error verifying wallet, please reconnect wallet", { id: signToastId });
           console.error(error);
@@ -139,48 +58,10 @@ export function HomeContent() {
           setLoading(false);
         }
       }
-    }
+    };
 
     sign();
   }, [signState, signTransaction, publicKey]);
-
-  async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
-    try {
-      const metadataAccount = metaplex
-        .nfts()
-        .pdas()
-        .metadata({ mint: mintAddress });
-
-      const metadataAccountInfo = await rpcLimiter.schedule(() =>
-        connection.getAccountInfo(metadataAccount)
-      );
-
-      if (metadataAccountInfo) {
-        const token = await rpcLimiter.schedule(() =>
-          metaplex.nfts().findByMint({ mintAddress: mintAddress })
-        );
-        const cid = extractCidFromUrl(token.uri);
-        if (cid) {
-          // console.log(`Found cid: ${cid} using url: ${token.uri ? JSON.stringify(token.uri) : JSON.stringify(token.json?.image)}`);
-          const newMetadata = await apiLimiter.schedule(() => fetchIpfsMetadata(cid));
-          return {
-            name: token?.name,
-            symbol: token?.symbol,
-            logo: newMetadata.imageUrl,
-          };
-        } else {
-          return {
-            name: token?.name,
-            symbol: token?.symbol,
-            logo: token.json?.image ?? DEFAULT_IMAGE_URL,
-          };
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching token metadata for:", mint, error);
-      return { name: mint, symbol: mint, logo: DEFAULT_IMAGE_URL };
-    }
-  }
 
   if (loading || !tokens || signState === "loading") {
     return (
@@ -193,7 +74,6 @@ export function HomeContent() {
     );
   }
 
-
   if (publicKey && signState === "success" && tokens.length === 0) {
     return <p className="text-center p-4">Loading wallet information...</p>;
   }
@@ -204,11 +84,13 @@ export function HomeContent() {
     <div className="grid grid-cols-1">
       {hasFetchedData ? (
         <div>
-          <ItemList initialItems={tokens} totalValue={totalValue}/>
+          <ItemList initialItems={tokens} totalValue={totalValue} />
         </div>
       ) : (
         <div className="text-center">
-          <p className="text-center p-4"> This app allows users to convert SPL Tokens to $Lockin and will close their token account for returning rent.</p>
+          <p className="text-center p-4">
+            This app allows users to convert SPL Tokens to $Lockin and will close their token account for returning rent.
+          </p>
           {!publicKey && (
             <div className="card border-2 border-primary mb-5">
               <div className="card-body items-center">
@@ -222,7 +104,7 @@ export function HomeContent() {
             <div className="card border-2 border-primary mb-5">
               <div className="card-body items-center text-center">
                 <h2 className="card-title text-center mb-2">
-                  {`Please Disconnect and reconnect your wallet. \nYou might need to reload the page. \nYou might have too many fucking tokens AND WE'RE BEING RATE LIMITED. \n Thank you for locking in 🔒`}
+                  {`Please Disconnect and reconnect your wallet. You might need to reload the page. You might have too many tokens and we're being rate limited. Thank you for locking in 🔒`}
                 </h2>
               </div>
             </div>
@@ -230,7 +112,6 @@ export function HomeContent() {
         </div>
       )}
       {balance > 0 && <p className="text-center p-4">Total LOCKINS Generated: {balance.toFixed(5)}</p>}
-      {/* {error && <p>Balance Errror: {error}</p>} */}
     </div>
   );
 }

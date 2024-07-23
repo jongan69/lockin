@@ -1,37 +1,43 @@
 import { Item, ItemData } from "@components/home/item";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { createJupiterApiClient, QuoteGetRequest } from '@jup-ag/api';
-import { useCloseTokenAccount } from "../../utils/hooks/useCloseTokenAccount"; // Adjust the path as needed
 import { DEFAULT_TOKEN, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
-import { amount } from "@metaplex-foundation/js";
+import { useTokenOperations } from "@utils/hooks/useTokenOperations";
 
 type Props = {
   initialItems: Array<ItemData>;
   totalValue: number;
 };
 
-export function ItemList({ initialItems, totalValue }: Props) {
+export const ItemList = ({ initialItems, totalValue }: Props) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
   const { connection } = useConnection();
-  const { closeTokenAccount } = useCloseTokenAccount();
   const [items] = useState<ItemData[]>(initialItems);
-  const [closedAccounts, setClosedAccounts] = useState<Set<string>>(new Set());
+  const [closedAccounts] = useState<Set<string>>(new Set());
   const [sortedItems, setSortedItems] = useState<ItemData[]>(initialItems);
   const [selectedItems, setSelectedItems] = useState<Set<ItemData>>(new Set());
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
-  const jupiterQuoteApi = createJupiterApiClient();
-
-  const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"
+  const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N";
   const targetTokenMintAddress = DEFAULT_TOKEN;
-  const targetTokenMintPubkey = new PublicKey(targetTokenMintAddress);
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET);
   const referralProgramId = REFER_PROGRAM_ID;
+
+  const { handleClosePopup, sending } = useTokenOperations(
+    publicKey,
+    connection,
+    signTransaction,
+    sendTransaction,
+    targetTokenMintAddress,
+    referralAccountPubkey,
+    referralProgramId,
+    raydiumUrl,
+    setShowPopup,
+    setSelectedItems
+  );
 
   const handleItemClick = (item: ItemData) => {
     setSelectedItems(prev => {
@@ -51,113 +57,6 @@ export function ItemList({ initialItems, totalValue }: Props) {
       setErrorMessage(null);
     } else {
       toast.error("Please select at least one item.");
-    }
-  };
-
-  const handleClosePopup = async (answer: boolean) => {
-    if (answer && selectedItems.size > 0 && publicKey && signTransaction) {
-      try {
-        setSending(true);
-        setMessage('Preparing transactions...');
-
-        for (const selectedItem of selectedItems) {
-          if (selectedItem.mintAddress === targetTokenMintAddress) {
-            setErrorMessage("Error: You are already lock maxing this token.");
-            window.open(raydiumUrl, '_blank');
-            handleClosePopup(false);
-            return;
-          }
-          const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
-          console.log(`Balance: ${selectedItem.amount} ${selectedItem.symbol} , ${selectedItem.decimals} Decimals`);
-          if (balanceInSmallestUnit === 0) {
-            await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
-            setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
-            continue;
-          }
-
-          console.log(`Swapping ${balanceInSmallestUnit} ${selectedItem.symbol} for ${targetTokenMintAddress}`);
-          const params: QuoteGetRequest = {
-            inputMint: selectedItem.mintAddress,
-            outputMint: targetTokenMintAddress,
-            amount: balanceInSmallestUnit,
-            autoSlippage: true,
-            autoSlippageCollisionUsdValue: 1_000,
-            platformFeeBps: 150,
-            maxAutoSlippageBps: 1000,
-            minimizeSlippage: true,
-            onlyDirectRoutes: false,
-            asLegacyTransaction: false,
-          };
-
-          try {
-            const quote = await jupiterQuoteApi.quoteGet(params);
-
-            console.log("quote", quote);
-
-            if (!quote) {
-              throw new Error("Failed to fetch quote");
-            }
-
-            const [feeAccount] = PublicKey.findProgramAddressSync(
-              [
-                Buffer.from("referral_ata"),
-                referralAccountPubkey.toBuffer(),
-                targetTokenMintPubkey.toBuffer(),
-              ],
-              referralProgramId
-            );
-
-            const swapObj = await jupiterQuoteApi.swapPost({
-              swapRequest: {
-                quoteResponse: quote,
-                userPublicKey: publicKey.toBase58(),
-                dynamicComputeUnitLimit: true,
-                prioritizationFeeLamports: "auto",
-                feeAccount: feeAccount.toBase58(),
-              },
-            });
-
-            if (!swapObj) {
-              throw new Error("Swap API request failed");
-            }
-
-            const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-            const tx = VersionedTransaction.deserialize(swapTransactionBuf);
-            const signedTransaction = await signTransaction(tx);
-
-            setMessage('Simulating transaction...');
-            const simulationResult = await connection.simulateTransaction(signedTransaction);
-            if (simulationResult.value.err) {
-              throw new Error("Transaction simulation failed");
-            }
-
-            setMessage('Sending transaction...');
-            const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext();
-            await sendTransaction(signedTransaction, connection, { minContextSlot });
-
-            setMessage('Transaction confirmed successfully!');
-            toast.success('Transaction confirmed successfully!');
-
-            await closeTokenAccount(new PublicKey(selectedItem.tokenAddress));
-            setClosedAccounts(prev => new Set(prev).add(selectedItem.tokenAddress));
-          } catch (error) {
-            console.error(`Skipping token ${selectedItem.symbol} due to error:`, error);
-            toast.error(`Skipping token ${selectedItem.symbol} due to error.`);
-          }
-        }
-
-        setShowPopup(false);
-        setSelectedItems(new Set());
-      } catch (error) {
-        console.error("Error during swap:", error);
-        setErrorMessage(`Swap failed: ${error}`);
-        toast.error("Swap failed. Please try again.");
-      } finally {
-        setSending(false);
-      }
-    } else {
-      setShowPopup(false);
-      setSelectedItems(new Set());
     }
   };
 
@@ -206,13 +105,13 @@ export function ItemList({ initialItems, totalValue }: Props) {
             {message && <p className="text-blue-500 mt-2">{message}</p>}
             <div className="flex justify-around mt-4">
               <button
-                onClick={() => handleClosePopup(true)}
+                onClick={() => handleClosePopup(true, selectedItems, setMessage, setErrorMessage)}
                 disabled={sending}
               >
                 {sending ? 'Processing...' : 'Yes'}
               </button>
               <button
-                onClick={() => handleClosePopup(false)}
+                onClick={() => handleClosePopup(false, selectedItems, setMessage, setErrorMessage)}
                 disabled={sending}
               >
                 No
@@ -223,4 +122,6 @@ export function ItemList({ initialItems, totalValue }: Props) {
       )}
     </div>
   );
-}
+};
+
+export default ItemList;

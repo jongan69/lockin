@@ -10,14 +10,19 @@ type Props = {
   children: ReactNode;
   className?: string;
 };
-export function Button({ state, onClick, children, className }: Props) {
+
+export function Button({ state, onClick, children, className = "" }: Props) {
   const { publicKey } = useWallet();
 
   if (!publicKey) {
     return null;
   }
 
-  const buttonClasses = classNames("btn", className);
+  const buttonClasses = classNames("btn", className, {
+    "btn-loading": state === "loading",
+    "btn-success": state === "success",
+    "btn-error": state === "error",
+  });
 
   return (
     <button
@@ -25,7 +30,7 @@ export function Button({ state, onClick, children, className }: Props) {
       onClick={onClick}
       disabled={state === "loading"}
     >
-      {children}
+      {state === "loading" ? "Loading..." : children}
     </button>
   );
 }

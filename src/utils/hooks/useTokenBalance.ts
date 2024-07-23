@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import Bottleneck from 'bottleneck';
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { TOKEN_PROGRAM_ID_ADDRESS } from '@utils/globals';
+import { useConnection } from '@solana/wallet-adapter-react';
 
 const useTokenBalance = (tokenAccountAddress: string) => {
   const { connection } = useConnection();

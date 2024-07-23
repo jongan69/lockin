@@ -1,5 +1,5 @@
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { createCloseAccountInstruction } from "@solana/spl-token";
 import { toast } from "react-hot-toast";
 
@@ -7,13 +7,13 @@ export const useCloseTokenAccount = () => {
   const { publicKey, signTransaction, sendTransaction } = useWallet();
   const { connection } = useConnection();
 
-  const closeTokenAccount = async (tokenAccountPubkey: PublicKey | undefined) => {
+  const closeTokenAccount = async (tokenAccountPubkey: PublicKey): Promise<TransactionInstruction> => {
     if (!publicKey || !signTransaction || !tokenAccountPubkey) {
       throw new Error("Wallet not connected or not able to sign transactions or Error with token account address");
     }
 
     const tokenAccount = new PublicKey(tokenAccountPubkey);
-    console.log("Closing token account: ", tokenAccount.toString());
+    console.log("Preparing to close token account: ", tokenAccount.toString());
 
     // Check if the token account is valid
     let tokenAccountInfo;
@@ -28,13 +28,21 @@ export const useCloseTokenAccount = () => {
       throw error;
     }
 
-    const transaction = new Transaction().add(
-      createCloseAccountInstruction(
-        tokenAccount,
-        publicKey, // destination
-        publicKey // owner of token account
-      )
+    const closeInstruction = createCloseAccountInstruction(
+      tokenAccount,
+      publicKey, // destination
+      publicKey // owner of token account
     );
+
+    return closeInstruction;
+  };
+
+  const closeTokenAccountsAndSendTransaction = async (instructions: TransactionInstruction[]) => {
+    if (!publicKey || !signTransaction) {
+      throw new Error("Wallet not connected or not able to sign transactions");
+    }
+
+    const transaction = new Transaction().add(...instructions);
 
     try {
       const { blockhash } = await connection.getLatestBlockhash();
@@ -44,22 +52,22 @@ export const useCloseTokenAccount = () => {
 
       const signedTransaction = await signTransaction(transaction);
       const signature = await sendTransaction(signedTransaction, connection);
-      
-      await connection.confirmTransaction({ 
+
+      await connection.confirmTransaction({
         blockhash,
         lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
         signature
       });
 
-      console.log("Token account closed with signature:", signature);
-      toast.success("Token account closed successfully!");
+      console.log("Transaction confirmed with signature:", signature);
+      toast.success("Transaction confirmed successfully!");
       return signature;
     } catch (error) {
-      console.error("Failed to close token account:", error);
-      toast.error("Failed to close token account. Please try again.");
+      console.error("Failed to send transaction:", error);
+      toast.error("Failed to send transaction. Please try again.");
       throw error;
     }
   };
 
-  return { closeTokenAccount };
+  return { closeTokenAccount, closeTokenAccountsAndSendTransaction };
 };

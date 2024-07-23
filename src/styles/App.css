@@ -59,6 +59,21 @@ code {
   border-top-color: #ccb;
 }
 
+/* Should go in button.css */
+.btn-loading {
+  background-color: #f3f4f6; /* Example color for loading state */
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background-color: #4caf50; /* Example color for success state */
+}
+
+.btn-error {
+  background-color: #f44336; /* Example color for error state */
+}
+
+/* Should go in item-list.css */
 /* .custom-lock-cursor:hover {
   cursor: url('../../public/lock.png') 16 16, auto;
 } */
@@ -88,3 +103,4 @@ code {
 .confirm-selection-button:hover {
   background-color: #0056b3; /* Darker blue on hover */
 }
+
