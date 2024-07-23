@@ -17,6 +17,7 @@ import { toast } from "react-hot-toast";
 import { Modal } from "@components/layout/modal";
 import { Footer } from "@components/layout/footer";
 
+
 const Home: NextPage = () => {
   const { publicKey, signTransaction, connected } = useWallet();
 
