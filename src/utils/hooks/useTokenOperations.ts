@@ -198,7 +198,8 @@ export const useTokenOperations = (
     setSelectedItems,
     closeTokenAccount,
     jupiterQuoteApi,
-    sendTransaction
+    sendTransaction,
+    setClosedTokenAccounts
   ]);
 
   const sendTransactionBatch = async (instructions: TransactionInstruction[], addressLookupTableAccounts: AddressLookupTableAccount[] | undefined, publicKey: PublicKey, signTransaction: (arg0: VersionedTransaction) => any, connection: Connection, setMessage: (msg: string) => void, sendTransaction: (arg0: any, arg1: any, arg2: { minContextSlot: any; }) => any) => {
