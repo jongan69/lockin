@@ -5,7 +5,6 @@ export const extractCidFromUrl = (url: string): string | null => {
     }
   
     let cid = "";
-  
     if (url.startsWith("https://cf-ipfs.com/ipfs/")) {
       cid = url.replace("https://cf-ipfs.com/ipfs/", "");
     } else if (url.startsWith("https://ipfs.io/ipfs/")) {

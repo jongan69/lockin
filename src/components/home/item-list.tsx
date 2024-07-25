@@ -1,48 +1,53 @@
-import { Item, ItemData } from "@components/home/item";
+import { Item } from "@components/home/item";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { DEFAULT_TOKEN, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
+import { DEFAULT_TOKEN, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals";
 import { useTokenOperations } from "@utils/hooks/useTokenOperations";
+import { TokenData } from "@utils/tokenUtils";
 
 type Props = {
-  initialItems: Array<ItemData>;
+  initialItems: Array<TokenData>;
   totalValue: number;
 };
 
 export const ItemList = ({ initialItems, totalValue }: Props) => {
-  const { publicKey, sendTransaction, signTransaction } = useWallet();
+  // const { publicKey, sendTransaction, signTransaction } = useWallet();
+  const { publicKey, sendTransaction, signAllTransactions } = useWallet();
+
   const { connection } = useConnection();
-  const [items] = useState<ItemData[]>(initialItems);
-  const [sortedItems, setSortedItems] = useState<ItemData[]>(initialItems);
-  const [selectedItems, setSelectedItems] = useState<Set<ItemData>>(new Set());
+  const [items] = useState<TokenData[]>(initialItems);
+  const [sortedItems, setSortedItems] = useState<TokenData[]>(initialItems);
+  const [selectedItems, setSelectedItems] = useState<Set<TokenData>>(new Set());
   const [closedTokenAccounts, setClosedTokenAccounts] = useState(new Set());
+  const [closabeleTokenAccounts, setClosabeleTokenAccounts] = useState(initialItems);
 
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N";
   const targetTokenMintAddress = DEFAULT_TOKEN;
+  const dustReceiver = new PublicKey(DEFAULT_WALLET);
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET);
   const referralProgramId = REFER_PROGRAM_ID;
 
   const { handleClosePopup, sending } = useTokenOperations(
     publicKey,
     connection,
-    signTransaction,
+    signAllTransactions,
     sendTransaction,
     targetTokenMintAddress,
+    dustReceiver,
     referralAccountPubkey,
     referralProgramId,
     raydiumUrl,
     setShowPopup,
     setSelectedItems,
-    closedTokenAccounts,
     setClosedTokenAccounts
   );
 
-  const handleItemClick = (item: ItemData) => {
+  const handleItemClick = (item: TokenData) => {
     setSelectedItems(prev => {
       const newSelectedItems = new Set(prev);
       if (newSelectedItems.has(item)) {
@@ -66,11 +71,20 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   useEffect(() => {
     const sortedItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
+      .filter(item => !item?.isNft)
+      .filter(item => (item.amount !== 0 && item.usdValue !== 0))
       .sort((a, b) => b.usdValue - a.usdValue);
 
     setSortedItems(sortedItems);
   }, [closedTokenAccounts, items]);
 
+  useEffect(() => {
+    const closeableItems = [...items]
+      .filter(item => !closedTokenAccounts.has(item.tokenAddress))
+      .filter(item => item.amount === 0 && item.usdValue === 0)
+
+    setClosabeleTokenAccounts(closeableItems);
+  }, [closedTokenAccounts, items]);
   return (
     <div>
       <h2 className="text-center text-primary m-10">{sortedItems.length} Token Accounts</h2>
@@ -78,8 +92,26 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (
           <p className="p-4">No Coins found in your wallet</p>
-        ) : (
-          sortedItems.map((item, index) => (
+        ) :
+          <>
+            {(sortedItems.map((item, index) => (
+              <div
+                key={index}
+                onClick={() => handleItemClick(item)}
+                className={`transform transition-transform duration-300 hover:scale-105 custom-lock-cursor ${selectedItems.has(item) ? 'selected-item' : ''}`}
+              >
+                <Item data={item} />
+              </div>
+            ))
+            )}
+          </>
+        }
+      </div>
+
+      {closabeleTokenAccounts.length > 0 &&
+        <>
+          <h2 className="text-center text-primary m-10">Closable Token Accounts</h2>
+          {(closabeleTokenAccounts.map((item, index) => (
             <div
               key={index}
               onClick={() => handleItemClick(item)}
@@ -88,8 +120,10 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
               <Item data={item} />
             </div>
           ))
-        )}
-      </div>
+          )}
+        </>
+      }
+
       {selectedItems.size > 0 && (
         <button
           onClick={handleConfirmSelection}
@@ -111,7 +145,8 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
                 onClick={() => handleClosePopup(true, selectedItems, setMessage, setErrorMessage)}
                 disabled={sending}
               >
-                {sending ? 'Processing...' : 'Yes'}
+                {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
+
               </button>
               <button
                 onClick={() => handleClosePopup(false, selectedItems, setMessage, setErrorMessage)}

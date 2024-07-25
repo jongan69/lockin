@@ -1,16 +1,6 @@
+import { TokenData } from "@utils/tokenUtils";
 import React, { useState, useEffect } from "react";
 
-export type ItemData = {
-  decimals: number;
-  mintAddress: string;
-  tokenAddress: string;
-  name?: string;
-  amount: number;
-  symbol?: string;
-  logo?: string;
-  usdValue: number;
-  cid?: string;
-};
 
 type ImageProps = {
   cid: string | undefined;
@@ -37,16 +27,22 @@ const ImageComponent = ({ cid, alt, logo }: ImageProps) => {
   const handleError = () => {
     setSrc(DEFAULT_IMAGE_URL);
   };
-
+  console.log(`Image src: ${src}, https://ipfs.io/ipfs/${cid}`);
   return <img className="object-cover h-80 w-96 aspect-square" src={src} alt={alt} onError={handleError} />;
 };
 
 type ItemProps = {
-  data: ItemData;
+  data: TokenData;
 };
 
 export function Item({ data }: ItemProps) {
-  const { name, symbol, amount, logo, usdValue, cid } = data;
+  const { 
+    name, 
+    symbol, 
+    amount, logo, 
+    usdValue, cid, 
+    collectionName 
+  } = data;
 
   const cardClass = `card shadow-xl bg-neutral text-neutral-content ${usdValue === 0 ? 'border-red-500 border-4' : ''}`;
 
@@ -59,6 +55,7 @@ export function Item({ data }: ItemProps) {
       )}
       <div className="card-body p-4 items-center text-center">
         <h2 className="card-title m-0">{name}</h2>
+        {/* {collectionName && <p>NFT Collection Name: {collectionName}</p>} */}
         <p>
           {symbol}: {Number(amount).toFixed(5)}(≈ ${usdValue})
         </p>

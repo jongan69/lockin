@@ -13,11 +13,12 @@ export default async function handler(req: { query: { cid: any; }; }, res: { sta
   }
 
   const ipfsUrl = `https://ipfs.io/ipfs/${cid}`;
+  console.log(`Retrieving IPFS metadata for CID: ${ipfsUrl}`);
 
   try {
     const response = await fetch(ipfsUrl, { mode: 'no-cors' });
     if (!response.ok) {
-      console.error(`Error fetching IPFS data: ${response}`);
+      console.error(`Error fetching IPFS data: ${JSON.stringify(response)}`);
       res.status(200).json({ imageUrl: DEFAULT_IMAGE_URL });
       return
     }

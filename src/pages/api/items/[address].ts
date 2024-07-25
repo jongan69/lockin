@@ -1,14 +1,14 @@
 import { NETWORK } from "@utils/endpoints";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { ItemData } from "@components/home/item";
 import { fetcher } from "@utils/use-data-fetch";
+import { TokenData } from "@utils/tokenUtils";
 
-export type NftResponse = { nfts: Array<ItemData> };
+export type NftResponse = { nfts: Array<TokenData> };
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Array<ItemData>>
+  res: NextApiResponse<Array<TokenData>>
 ) {
   const { address } = req.query;
 
