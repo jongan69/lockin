@@ -39,23 +39,27 @@ export function Item({ data }: ItemProps) {
   const { 
     name, 
     symbol, 
-    amount, logo, 
-    usdValue, cid, 
-    collectionName 
+    amount, 
+    logo, 
+    usdValue, 
+    cid, 
+    collectionName,
+    collectionLogo,
+    isNft
   } = data;
 
-  const cardClass = `card shadow-xl bg-neutral text-neutral-content ${usdValue === 0 ? 'border-red-500 border-4' : ''}`;
+  const cardClass = `card shadow-xl bg-neutral text-neutral-content ${usdValue === 0 && amount > 0 || isNft && amount > 0 ? 'border-red-500 border-4' : ''}`;
 
   return (
     <div className={cardClass}>
       {logo && (
         <figure className="relative h-80">
-          <ImageComponent cid={cid} logo={logo} alt={`Picture of ${name}`} />
+          <ImageComponent cid={cid} logo={logo ?? collectionLogo} alt={`Picture of ${name}`} />
         </figure>
       )}
       <div className="card-body p-4 items-center text-center">
         <h2 className="card-title m-0">{name}</h2>
-        {/* {collectionName && <p>NFT Collection Name: {collectionName}</p>} */}
+        {isNft && <p>NFT Collection Name: {collectionName}</p>}
         <p>
           {symbol}: {Number(amount).toFixed(5)}(≈ ${usdValue})
         </p>

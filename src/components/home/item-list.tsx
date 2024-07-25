@@ -22,6 +22,8 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [selectedItems, setSelectedItems] = useState<Set<TokenData>>(new Set());
   const [closedTokenAccounts, setClosedTokenAccounts] = useState(new Set());
   const [closabeleTokenAccounts, setClosabeleTokenAccounts] = useState(initialItems);
+  const [nfts, setNfts] = useState(initialItems);
+
 
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     }
   };
 
+  // Tokens
   useEffect(() => {
     const sortedItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
@@ -78,6 +81,16 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     setSortedItems(sortedItems);
   }, [closedTokenAccounts, items]);
 
+  // NFTs
+  useEffect(() => {
+    const nfts = [...items]
+      .filter(item => !closedTokenAccounts.has(item.tokenAddress))
+      .filter(item => item?.isNft)
+      .sort((a, b) => b.usdValue - a.usdValue);
+    setNfts(nfts);
+  }, [closedTokenAccounts, items]);
+
+  // Closable Token Accounts
   useEffect(() => {
     const closeableItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
@@ -87,8 +100,9 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   }, [closedTokenAccounts, items]);
   return (
     <div>
-      <h2 className="text-center text-primary m-10">{sortedItems.length} Token Accounts</h2>
+      <h2 className="text-center text-primary m-10">{items.length} Token Accounts</h2>
       <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
+      <h1 className="text-center text-primary m-10">Swapable Tokens</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (
           <p className="p-4">No Coins found in your wallet</p>
@@ -108,14 +122,32 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
         }
       </div>
 
+      {nfts.length > 0 &&
+        <>
+          <h1 className="text-center text-primary m-10">NFTs</h1>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(nfts.map((item, index) => (
+              <div
+                key={index}
+                onClick={() => handleItemClick(item)}
+                className={`transform transition-transform duration-300 hover:scale-105 custom-lock-cursor ${selectedItems.has(item) ? 'selected-item' : ''}`}
+              >
+                <Item data={item} />
+              </div>
+            ))
+            )}
+          </div>
+        </>
+      }
+
       {closabeleTokenAccounts.length > 0 &&
         <>
-          <h2 className="text-center text-primary m-10">Closable Token Accounts</h2>
+          <h1 className="text-center text-primary m-10">Closable Token Accounts</h1>
           {(closabeleTokenAccounts.map((item, index) => (
             <div
               key={index}
               onClick={() => handleItemClick(item)}
-              className={`transform transition-transform duration-300 hover:scale-105 custom-lock-cursor ${selectedItems.has(item) ? 'selected-item' : ''}`}
+              className={`transform transition-transform duration-300 hover:scale-105 py-2 custom-lock-cursor ${selectedItems.has(item) ? 'selected-item' : ''}`}
             >
               <Item data={item} />
             </div>
