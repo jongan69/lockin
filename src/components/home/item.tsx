@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 
 
 type ImageProps = {
-  cid: string | undefined;
+  cid?: string | null;
   logo: string | undefined;
   alt: string;
 };

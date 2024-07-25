@@ -19,7 +19,6 @@ const rpcLimiter = new Bottleneck({ maxConcurrent: 10, minTime: 100 });
 export const apiLimiter = new Bottleneck({ maxConcurrent: 5, minTime: 100 });
 
 export type TokenData = {
-  isNft: any;
   decimals: number;
   mintAddress: string;
   tokenAddress: string;
@@ -27,10 +26,11 @@ export type TokenData = {
   amount: number;
   symbol?: string;
   logo?: string;
-  cid?: string;
+  cid?: string | null;
   usdValue: number;
   collectionName?: string;
   collectionLogo?: string;
+  isNft?: boolean;
 };
 
 export async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
@@ -84,7 +84,7 @@ export async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
     }
   } catch (error) {
     console.error("Error fetching token metadata for:", mint, error);
-    return { name: mint, symbol: mint, collectionName: mint, isNft: false };
+    return { name: mint, symbol: mint, logo: DEFAULT_IMAGE_URL, cid: null, collectionName: mint, collectionLogo: DEFAULT_IMAGE_URL, isNft: false };
   }
 }
 
@@ -113,6 +113,7 @@ async function fetchCollectionMetadata(collectionAddress: PublicKey) {
           name: collection.name,
           symbol: collection.symbol,
           logo: collectionMetadata.imageUrl ?? DEFAULT_IMAGE_URL,
+          cid: cid,
           isNft: collectionMetadata?.name ? true : false
         };
       } else {
@@ -120,6 +121,7 @@ async function fetchCollectionMetadata(collectionAddress: PublicKey) {
           name: collection.name,
           symbol: collection.symbol,
           logo: collection.json?.image ?? DEFAULT_IMAGE_URL,
+          cid: null,
           isNft: true
         };
       }
@@ -130,6 +132,7 @@ async function fetchCollectionMetadata(collectionAddress: PublicKey) {
       name: "Unknown",
       symbol: "Unknown",
       logo: DEFAULT_IMAGE_URL,
+      cid: null,
       isNft: false
     };
   }
@@ -161,7 +164,7 @@ export async function handleTokenData(
   const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
   // Need to add check if NFT to get floor price as price
   let price = 0
-  if (metadata?.isNft) {
+  if (metadata && metadata.isNft) {
     const floorPrice = await apiLimiter.schedule(() =>
       fetchFloorPrice(mintAddress)
     );
