@@ -222,26 +222,34 @@ export const useTokenOperations = (
           lamports: bundleTip,
         }),
       );
-
+  
       const instructionChunks: TransactionInstruction[][] = [];
       let currentChunk: TransactionInstruction[] = [];
       let currentChunkSize = 0;
-
+  
       for (const instruction of instructions) {
-        const estimatedSize = currentChunkSize + instruction.data.length;
+        const instructionSize = instruction.data.length;
+        console.log(`Instruction size: ${instructionSize} bytes`);
+  
+        const estimatedSize = currentChunkSize + instructionSize;
         if (estimatedSize > 1232) { // 1232 bytes is the raw size limit for a transaction
+          console.log(`Current chunk size before adding instruction: ${currentChunkSize} bytes`);
           instructionChunks.push(currentChunk);
           currentChunk = [];
           currentChunkSize = 0;
         }
         currentChunk.push(instruction);
-        currentChunkSize += instruction.data.length;
+        currentChunkSize += instructionSize;
+        console.log(`Running total transaction size: ${currentChunkSize} bytes`);
       }
-
+  
       if (currentChunk.length > 0) {
+        console.log(`Final chunk size before sending: ${currentChunkSize} bytes`);
         instructionChunks.push(currentChunk);
       }
-
+  
+      console.log(`Total instruction chunks: ${instructionChunks.length}`);
+  
       const signedTransactions: VersionedTransaction[] = [];
       for (const chunk of instructionChunks) {
         const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
@@ -250,13 +258,32 @@ export const useTokenOperations = (
           recentBlockhash: blockhash,
           instructions: chunk,
         }).compileToV0Message(addressLookupTableAccounts);
-
+  
         const transaction = new VersionedTransaction(messageV0);
+  
+        // Log the transaction size before serialization
+        const transactionSize = transaction.serialize().length;
+        console.log(`Transaction size before serialization: ${transactionSize} bytes`);
+  
         signedTransactions.push(transaction);
       }
-
-      const signedChunks = await signAllTransactions(signedTransactions);
-      const bundleId = await sendTxUsingJito(signedChunks.map((tx: any) => tx.serialize()));
+  
+      // Attempt to sign all transactions
+      let signedChunks;
+      try {
+        signedChunks = await signAllTransactions(signedTransactions);
+      } catch (error: any) {
+        console.error('Error during signing transactions:', error);
+        throw new Error(`Error during signing transactions: ${error.toString()}`);
+      }
+  
+      // Log serialized transaction sizes
+      const serializedTxs = signedChunks.map((tx: any) => tx.serialize());
+      serializedTxs.forEach((tx: string | any[], idx: any) => {
+        console.log(`Serialized transaction ${idx} size: ${tx.length} bytes`);
+      });
+  
+      const bundleId = await sendTxUsingJito(serializedTxs);
       setMessage('Sending transaction: ' + bundleId);
       const bundleStatus = await getBundleStatus(bundleId);
       setSelectedItems(new Set());
@@ -265,13 +292,17 @@ export const useTokenOperations = (
         setSelectedItems(new Set());
       } else {
         console.error(`Error during transaction batch send: ${JSON.stringify(bundleStatus)}`);
-        setMessage('FUCK SOMETHING HAPPENED: ' + bundleId + JSON.stringify(bundleStatus));
+        setMessage('Error: ' + bundleId + JSON.stringify(bundleStatus));
       }
     } catch (error: any) {
       console.error(`Error during transaction batch send: ${description}`, error.toString());
       throw new Error(`Error during transaction batch send: ${description}, ${error.toString()}`);
     }
   };
+  
+  
+  
+  
 
   return { handleClosePopup, sending };
 };

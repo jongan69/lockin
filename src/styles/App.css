@@ -111,7 +111,7 @@ code {
   z-index: 1000;
   padding: 10px 20px;
   background-color: #00ff44; /* Blue color */
-  color: white;
+  color: rgb(0, 0, 0);
   border: none;
   border-radius: 5px;
   cursor: pointer;
