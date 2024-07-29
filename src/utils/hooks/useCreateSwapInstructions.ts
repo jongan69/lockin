@@ -1,21 +1,111 @@
-import { useState, useCallback } from "react";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import {
   Connection, PublicKey, VersionedTransaction, TransactionInstruction,
   TransactionMessage, AddressLookupTableAccount, PublicKeyInitData,
   SystemProgram
 } from "@solana/web3.js";
-import * as splToken from "@solana/spl-token";
 import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest, QuoteResponse } from "@jup-ag/api";
-import { getBundleStatus, getTipAccounts, sendTxUsingJito } from "@utils/bundleUtils";
-import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { ComputeBudgetProgram } from "@solana/web3.js";
+import { useState, useCallback } from "react";
+
+export type bundleStatus = {
+  jsonrpc: string
+  result: {
+    context: {
+      slot: number
+    }
+    value: {
+      bundle_id: string
+      transactions: string[]
+      slot: number
+      confirmation_status: string
+      err: any
+    }[]
+  }
+  id: number
+}
+
+export async function getBundleStatus(id: string): Promise<bundleStatus> {
+  let endpoint = 'https://mainnet.block-engine.jito.wtf/api/v1/bundles';
+
+  let payload = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "getBundleStatuses",
+    params: [[id]]
+  };
+
+  let res = await fetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  let json = await res.json();
+  if (json.error) {
+    throw new Error(json.error.message);
+  }
+
+  return json;
+}
+
+export async function getTipAccounts(): Promise<string> {
+  let endpoint = 'https://mainnet.block-engine.jito.wtf/api/v1/bundles';
+
+  let payload = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "getTipAccounts",
+    params: []
+  };
+
+  let res = await fetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  let json = await res.json();
+  if (json.error) {
+    throw new Error(json.error.message);
+  }
+
+  // returns an Array of Bundler Tip Addresses
+  return json.result[0];
+}
+
+export async function sendTxUsingJito(serializedTxs: (Uint8Array | Buffer | number[])[]): Promise<string> {
+  let endpoint = 'https://mainnet.block-engine.jito.wtf/api/v1/bundles';
+
+  console.log(serializedTxs.map(t => bs58.encode(t)));
+  let payload = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "sendBundle",
+    params: [serializedTxs.map(t => bs58.encode(t))]
+  };
+
+  let res = await fetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  let json = await res.json();
+  if (json.error) {
+    throw new Error(json.error.message);
+  }
+
+  // return bundle ID
+  return json.result;
+}
 
 interface MyQuoteResponse extends QuoteResponse {
   error?: string;
 }
 
-export const useTokenOperations = (
+export const useCreateSwapInstructions = (
   publicKey: PublicKey | null,
   connection: Connection,
   signAllTransactions: any,
@@ -47,7 +137,6 @@ export const useTokenOperations = (
     setMessage('Preparing transactions...');
 
     let swapInstructions: TransactionInstruction[] = [];
-    let transactionCount = 0;
 
     try {
       for (const selectedItem of selectedItems) {
@@ -176,14 +265,16 @@ export const useTokenOperations = (
 
         swapInstructions.push(...swapInstructionsList);
         setClosedTokenAccounts((prev: Set<any>) => new Set(prev).add(selectedItem.tokenAddress));
+      }
 
-        if (swapInstructions.length > 0) {
-          transactionCount++;
-          await sendTransactionChunks(swapInstructions, addressLookupTableAccounts, publicKey, signAllTransactions, connection, setMessage, bundleTip, 'Processing bundled Jupiter swaps using Jito...');
+      if (swapInstructions.length > 0) {
+        const transactionChunks = splitInstructionsIntoChunks(swapInstructions, publicKey, connection);
+        for (const chunk of transactionChunks) {
+          await sendTransactionChunks(chunk, publicKey, signAllTransactions, connection, setMessage, bundleTip, 'Processing bundled Jupiter swaps using Jito...');
         }
       }
 
-      setMessage(`Transaction confirmed successfully! ${transactionCount} transactions were sent.`);
+      setMessage('Transaction confirmed successfully!');
       toast.success('Transaction confirmed successfully!');
       setShowPopup(false);
     } catch (error: any) {
@@ -207,9 +298,38 @@ export const useTokenOperations = (
     setClosedTokenAccounts
   ]);
 
+  const splitInstructionsIntoChunks = (
+    instructions: TransactionInstruction[],
+    publicKey: PublicKey,
+    connection: Connection,
+    maxChunkSize = 1232 // Max instruction size for Solana transactions
+  ): TransactionInstruction[][] => {
+    const chunks: TransactionInstruction[][] = [];
+    let currentChunk: TransactionInstruction[] = [];
+    let currentChunkSize = 0;
+
+    instructions.forEach(instruction => {
+      const instructionSize = instruction.data.length + (instruction.keys.length * 32);
+
+      if (currentChunkSize + instructionSize > maxChunkSize) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+        currentChunkSize = 0;
+      }
+
+      currentChunk.push(instruction);
+      currentChunkSize += instructionSize;
+    });
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+
+    return chunks;
+  };
+
   const sendTransactionChunks = async (
     instructions: TransactionInstruction[],
-    addressLookupTableAccounts: AddressLookupTableAccount[] | undefined,
     publicKey: PublicKey,
     signAllTransactions: any,
     connection: Connection,
@@ -227,86 +347,28 @@ export const useTokenOperations = (
         }),
       );
 
-      const instructionChunks: TransactionInstruction[][] = [];
-      let currentChunk: TransactionInstruction[] = [];
-      let currentChunkSize = 0;
-
-      for (const instruction of instructions) {
-        const instructionSize = instruction.data.length;
-        console.log(`Instruction size: ${instructionSize} bytes`);
-
-        if (instructionSize > 1232) {
-          throw new RangeError(`Instruction size exceeds limit: ${instructionSize} bytes`);
-        }
-
-        const estimatedSize = currentChunkSize + instructionSize;
-        if (estimatedSize > 1232) { // 1232 bytes is the raw size limit for a transaction
-          console.log(`Current chunk size before adding instruction: ${currentChunkSize} bytes`);
-          instructionChunks.push(currentChunk);
-          currentChunk = [];
-          currentChunkSize = 0;
-        }
-        currentChunk.push(instruction);
-        currentChunkSize += instructionSize;
-        console.log(`Running total transaction size: ${currentChunkSize} bytes`);
-      }
-
-      if (currentChunk.length > 0) {
-        console.log(`Final chunk size before sending: ${currentChunkSize} bytes`);
-        instructionChunks.push(currentChunk);
-      }
-
-      console.log(`Total instruction chunks: ${instructionChunks.length}`);
-
-      const signedTransactions: VersionedTransaction[] = [];
-      for (const chunk of instructionChunks) {
-        const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
-        const messageV0 = new TransactionMessage({
-          payerKey: new PublicKey(publicKey),
-          recentBlockhash: blockhash,
-          instructions: chunk,
-        }).compileToV0Message(addressLookupTableAccounts);
-
-        const transaction = new VersionedTransaction(messageV0);
-
-        // Add compute budget instructions to each chunk
-        const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({
-          units: 200000, // Adjust this value as needed
-        });
-        const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-          microLamports: 1,
-        });
-
-        // Add these instructions to each transaction chunk
-        chunk.unshift(computeBudgetInstruction, priorityFeeInstruction);
-
-        // Log the transaction size before serialization
-        const transactionSize = transaction.serialize().length;
-        console.log(`Transaction size before serialization: ${transactionSize} bytes`);
-
-        signedTransactions.push(transaction);
-      }
-
-      let signedChunks;
-      try {
-        signedChunks = await signAllTransactions(signedTransactions);
-      } catch (error: any) {
-        console.error('Error during signing transactions:', error);
-        throw new Error(`Error during signing transactions: ${error.toString()}`);
-      }
-
-      const serializedTxs = signedChunks.map((tx: any) => tx.serialize());
-
-      // Log serialized transaction sizes
-      serializedTxs.forEach((tx: string | any[], idx: any) => {
-        console.log(`Serialized transaction ${idx} size: ${tx.length} bytes`);
+      // Add compute budget instructions to the entire instructions list
+      const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+        units: 200000, // Adjust this value as needed
+      });
+      const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 1,
       });
 
-      serializedTxs.forEach((tx: any, idx: any) => {
-        console.log(`Serialized transaction ${idx} content: ${bs58.encode(tx)}`);
-      });
+      instructions.unshift(computeBudgetInstruction, priorityFeeInstruction);
 
-      const bundleId = await sendTxUsingJito(serializedTxs);
+      const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
+      const messageV0 = new TransactionMessage({
+        payerKey: new PublicKey(publicKey),
+        recentBlockhash: blockhash,
+        instructions: instructions,
+      }).compileToV0Message([]);
+
+      const transaction = new VersionedTransaction(messageV0);
+      const signedTransaction = await signAllTransactions([transaction]);
+      const serializedTx = signedTransaction[0].serialize();
+
+      const bundleId = await sendTxUsingJito([serializedTx]);
       setMessage('Sending transaction: ' + bundleId);
       const bundleStatus = await getBundleStatus(bundleId);
       setSelectedItems(new Set());
@@ -314,12 +376,12 @@ export const useTokenOperations = (
         console.log(`Completed sending transaction batch: ${JSON.stringify(bundleStatus)}`);
         setSelectedItems(new Set());
       } else {
-        console.error(`Error during transaction batch send: ${JSON.stringify(bundleStatus)}`);
-        setMessage('Error: ' + bundleId + JSON.stringify(bundleStatus));
+        console.error(`Jito Bundle Status Seems to be Null: ${JSON.stringify(bundleStatus)}`);
+        setMessage(`Result Jito Bundle ID: ${bundleId} \nJito Bundle Status ${JSON.stringify(bundleStatus.result)}`);
       }
     } catch (error: any) {
-      console.error(`Error during transaction batch send: ${description}`, error.toString());
-      throw new Error(`Error during transaction batch send: ${description}, ${error.toString()}`);
+      console.error(`Error during chunked and bundled transaction: ${description}`, error.toString());
+      throw new Error(`Error during chunked and bundled transaction: ${description}, ${error.toString()}`);
     }
   };
 

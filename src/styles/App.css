@@ -89,8 +89,8 @@ code {
 
 .confirm-selection-button {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  bottom: 5vh; /* 5% of viewport height */
+  left: 5vw; /* 5% of viewport width */
   z-index: 1000;
   padding: 10px 20px;
   background-color: #007bff; /* Blue color */
@@ -106,11 +106,11 @@ code {
 
 .close-token-accounts-button {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 5vh; /* 5% of viewport height */
+  right: 5vw; /* 5% of viewport width */
   z-index: 1000;
   padding: 10px 20px;
-  background-color: #00ff44; /* Blue color */
+  background-color: #00ff44; /* Green color */
   color: rgb(0, 0, 0);
   border: none;
   border-radius: 5px;
@@ -119,4 +119,17 @@ code {
 
 .close-token-accounts-button:hover {
   background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Media query for very small screens */
+@media (max-width: 600px) {
+  .confirm-selection-button {
+    bottom: 10vh; /* 10% of viewport height to ensure spacing */
+    left: 5vw; /* 5% of viewport width */
+  }
+
+  .close-token-accounts-button {
+    bottom: 5vh; /* 5% of viewport height */
+    right: 5vw; /* 5% of viewport width */
+  }
 }

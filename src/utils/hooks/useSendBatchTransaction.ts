@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { Connection, PublicKey, VersionedTransaction, TransactionInstruction, TransactionMessage } from "@solana/web3.js";
 import { toast } from "react-hot-toast";
 
+const TRANSACTION_SIZE_LIMIT = 1232; // Max size limit in bytes
+
 export const useSendBatchTransaction = () => {
   const [sending, setSending] = useState(false);
 
@@ -19,22 +21,47 @@ export const useSendBatchTransaction = () => {
       console.log(`Entering sendTransactionBatch: ${description}`);
 
       const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
-      const message = new TransactionMessage({
-        payerKey: new PublicKey(publicKey),
-        recentBlockhash: blockhash,
-        instructions,
-      }).compileToV0Message([]);
 
-      const transaction = new VersionedTransaction(message);
-      const signedTransaction = await signAllTransactions([transaction]);
+      const createTransaction = (instrs: TransactionInstruction[]) => {
+        const message = new TransactionMessage({
+          payerKey: new PublicKey(publicKey),
+          recentBlockhash: blockhash,
+          instructions: instrs,
+        }).compileToV0Message([]);
+        return new VersionedTransaction(message);
+      };
 
-      setMessage('Sending transaction...');
-      const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext({ commitment: 'processed' });
-      await sendTransaction(signedTransaction[0], connection, { minContextSlot });
+      let batches = [];
+      let currentBatch: TransactionInstruction[] = [];
 
-      console.log("Completed sending transaction batch");
+      for (const instruction of instructions) {
+        currentBatch.push(instruction);
+        const currentTransaction = createTransaction(currentBatch);
+
+        if (currentTransaction.serialize().length > TRANSACTION_SIZE_LIMIT) {
+          currentBatch.pop(); // Remove the last instruction that caused the size to exceed the limit
+          batches.push([...currentBatch]);
+          currentBatch = [instruction];
+        }
+      }
+
+      if (currentBatch.length > 0) {
+        batches.push(currentBatch);
+      }
+
+      for (const batch of batches) {
+        const batchTransaction = createTransaction(batch);
+        const signedBatchTransaction = await signAllTransactions([batchTransaction]);
+
+        setMessage('Sending batch transaction...');
+        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext({ commitment: 'processed' });
+        await sendTransaction(signedBatchTransaction[0], connection, { minContextSlot });
+
+        console.log("Completed sending batch transaction");
+        toast.success('Batch transaction confirmed successfully!');
+      }
+
       setSending(false);
-      toast.success('Transaction confirmed successfully!');
     } catch (error: any) {
       setSending(false);
       console.error(`Error during transaction batch send: ${description}`, error.toString());

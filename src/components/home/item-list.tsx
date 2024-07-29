@@ -4,11 +4,10 @@ import { PublicKey, TransactionInstruction } from "@solana/web3.js"; // Import P
 import React, { useState, useEffect } from "react"; // Import React and necessary hooks
 import { toast } from "react-hot-toast"; // Import toast for notifications
 import { DEFAULT_TOKEN, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals"; // Import global constants
-// import { useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
 import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
-import { useTokenOperations } from "@utils/hooks/useCreateSwapInstructions";
+import { useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions";
 
 type Props = {
   initialItems: Array<TokenData>; // Define prop type for initial items
@@ -41,7 +40,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   // Get sendTransactionBatch function and sending state from useSendBatchTransaction hook
   const { sendTransactionBatch, sending: sendingBatch } = useSendBatchTransaction();
 
-  const { handleClosePopup, sending } = useTokenOperations(
+  const { handleClosePopup, sending } = useCreateSwapInstructions(
     publicKey,
     connection,
     signAllTransactions,
@@ -111,7 +110,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       .filter(item => !item?.isNft)
       .filter(item => (item.amount !== 0 && item.usdValue !== 0))
       .sort((a, b) => b.usdValue - a.usdValue);
-
     setSortedItems(sortedItems); // Update sorted items state
   }, [closedTokenAccounts, items]);
 
@@ -129,45 +127,8 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     const closeableItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
       .filter(item => item.amount === 0 && item.usdValue === 0);
-
     setClosableTokenAccounts(closeableItems); // Update closable token accounts state
   }, [closedTokenAccounts, items]);
-
-
-
-
-  // Handle close popup event
-  // const handleClosePopup = async (
-  //   answer: boolean,
-  //   selectedItems: Set<any>,
-  //   setMessage: (msg: string) => void,
-  //   setErrorMessage: (msg: string | null) => void
-  // ) => {
-  //   console.log("Entered handleClosePopup");
-
-  //   if (answer && selectedItems.size > 0 && publicKey && signAllTransactions) {
-  //     console.log("Valid conditions for processing transactions");
-  //     try {
-  //       setMessage('Getting Jupiter Swap transaction instruction...'); // Set preparing transactions message
-  //       setMessage('User Signs all trasnactions...'); // Set preparing transactions message
-  //       setMessage('Transactions are submitted as a bundle...'); // Set preparing transactions message
-  //       console.log("Preparing transactions...");
-  //       setMessage(`Transaction confirmed successfully!`); // Set success message
-  //       setShowPopup(false); // Hide popup
-  //     } catch (error: any) {
-  //       console.error("Error during transaction:", error.toString());
-  //       setErrorMessage(`Transaction failed: ${error}`); // Set error message
-  //       toast.error("Transaction failed. Please try again."); // Show error toast
-  //     }
-  //   } else {
-  //     setShowPopup(false); // Hide popup
-  //     setSelectedItems(new Set()); // Reset selected items
-  //   }
-  // };
-
-
-
-
 
   return (
     <div>

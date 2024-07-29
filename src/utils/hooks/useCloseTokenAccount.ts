@@ -25,7 +25,7 @@ export const useCloseTokenAccount = () => {
       }
     } catch (error) {
       console.error("Failed to fetch token account info:", error);
-      toast.error("Failed to fetch token account info. Please try again.");
+      toast.error("Failed to fetch token account info. Please Refresh the page.");
       throw error;
     }
 
