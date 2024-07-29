@@ -1,9 +1,15 @@
 import { useState, useCallback } from "react";
-import { Connection, PublicKey, VersionedTransaction, TransactionInstruction, TransactionMessage, AddressLookupTableAccount, PublicKeyInitData, SystemProgram } from "@solana/web3.js";
+import {
+  Connection, PublicKey, VersionedTransaction, TransactionInstruction,
+  TransactionMessage, AddressLookupTableAccount, PublicKeyInitData,
+  SystemProgram
+} from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 import { toast } from "react-hot-toast";
 import { createJupiterApiClient, QuoteGetRequest, QuoteResponse } from "@jup-ag/api";
 import { getBundleStatus, getTipAccounts, sendTxUsingJito } from "@utils/bundleUtils";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { ComputeBudgetProgram } from "@solana/web3.js";
 
 interface MyQuoteResponse extends QuoteResponse {
   error?: string;
@@ -170,11 +176,11 @@ export const useTokenOperations = (
 
         swapInstructions.push(...swapInstructionsList);
         setClosedTokenAccounts((prev: Set<any>) => new Set(prev).add(selectedItem.tokenAddress));
-      }
 
-      if (swapInstructions.length > 0) {
-        transactionCount++;
-        await sendTransactionChunks(swapInstructions, undefined, publicKey, signAllTransactions, connection, setMessage, bundleTip, 'Processing bundled Jupiter swaps using Jito...');
+        if (swapInstructions.length > 0) {
+          transactionCount++;
+          await sendTransactionChunks(swapInstructions, addressLookupTableAccounts, publicKey, signAllTransactions, connection, setMessage, bundleTip, 'Processing bundled Jupiter swaps using Jito...');
+        }
       }
 
       setMessage(`Transaction confirmed successfully! ${transactionCount} transactions were sent.`);
@@ -193,11 +199,9 @@ export const useTokenOperations = (
     connection,
     setShowPopup,
     targetTokenMintAddress,
-    // dustReceiver,
     referralAccountPubkey,
     referralProgramId,
     bundleTip,
-    // raydiumUrl,
     setSelectedItems,
     jupiterQuoteApi,
     setClosedTokenAccounts
@@ -222,15 +226,19 @@ export const useTokenOperations = (
           lamports: bundleTip,
         }),
       );
-  
+
       const instructionChunks: TransactionInstruction[][] = [];
       let currentChunk: TransactionInstruction[] = [];
       let currentChunkSize = 0;
-  
+
       for (const instruction of instructions) {
         const instructionSize = instruction.data.length;
         console.log(`Instruction size: ${instructionSize} bytes`);
-  
+
+        if (instructionSize > 1232) {
+          throw new RangeError(`Instruction size exceeds limit: ${instructionSize} bytes`);
+        }
+
         const estimatedSize = currentChunkSize + instructionSize;
         if (estimatedSize > 1232) { // 1232 bytes is the raw size limit for a transaction
           console.log(`Current chunk size before adding instruction: ${currentChunkSize} bytes`);
@@ -242,14 +250,14 @@ export const useTokenOperations = (
         currentChunkSize += instructionSize;
         console.log(`Running total transaction size: ${currentChunkSize} bytes`);
       }
-  
+
       if (currentChunk.length > 0) {
         console.log(`Final chunk size before sending: ${currentChunkSize} bytes`);
         instructionChunks.push(currentChunk);
       }
-  
+
       console.log(`Total instruction chunks: ${instructionChunks.length}`);
-  
+
       const signedTransactions: VersionedTransaction[] = [];
       for (const chunk of instructionChunks) {
         const { blockhash } = await connection.getLatestBlockhash({ commitment: 'processed' });
@@ -258,17 +266,27 @@ export const useTokenOperations = (
           recentBlockhash: blockhash,
           instructions: chunk,
         }).compileToV0Message(addressLookupTableAccounts);
-  
+
         const transaction = new VersionedTransaction(messageV0);
-  
+
+        // Add compute budget instructions to each chunk
+        const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+          units: 200000, // Adjust this value as needed
+        });
+        const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: 1,
+        });
+
+        // Add these instructions to each transaction chunk
+        chunk.unshift(computeBudgetInstruction, priorityFeeInstruction);
+
         // Log the transaction size before serialization
         const transactionSize = transaction.serialize().length;
         console.log(`Transaction size before serialization: ${transactionSize} bytes`);
-  
+
         signedTransactions.push(transaction);
       }
-  
-      // Attempt to sign all transactions
+
       let signedChunks;
       try {
         signedChunks = await signAllTransactions(signedTransactions);
@@ -276,13 +294,18 @@ export const useTokenOperations = (
         console.error('Error during signing transactions:', error);
         throw new Error(`Error during signing transactions: ${error.toString()}`);
       }
-  
-      // Log serialized transaction sizes
+
       const serializedTxs = signedChunks.map((tx: any) => tx.serialize());
+
+      // Log serialized transaction sizes
       serializedTxs.forEach((tx: string | any[], idx: any) => {
         console.log(`Serialized transaction ${idx} size: ${tx.length} bytes`);
       });
-  
+
+      serializedTxs.forEach((tx: any, idx: any) => {
+        console.log(`Serialized transaction ${idx} content: ${bs58.encode(tx)}`);
+      });
+
       const bundleId = await sendTxUsingJito(serializedTxs);
       setMessage('Sending transaction: ' + bundleId);
       const bundleStatus = await getBundleStatus(bundleId);
@@ -299,10 +322,6 @@ export const useTokenOperations = (
       throw new Error(`Error during transaction batch send: ${description}, ${error.toString()}`);
     }
   };
-  
-  
-  
-  
 
   return { handleClosePopup, sending };
 };
