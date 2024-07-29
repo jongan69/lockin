@@ -30,11 +30,11 @@ export function Button({ state, onClick, children, className = "" }: Props) {
 
   return (
     <button
-      className={buttonClasses} // Apply the generated class names
-      onClick={onClick} // Set the click handler
-      disabled={state === "loading"} // Disable the button if it is in the loading state
+      className={buttonClasses}
+      onClick={onClick}
+      disabled={state === "loading"} 
     >
-      {state === "loading" ? "Loading..." : children} // Display "Loading..." if the button is in the loading state, otherwise display the children
+      {state === "loading" ? "Loading..." : children} 
     </button>
   );
 }

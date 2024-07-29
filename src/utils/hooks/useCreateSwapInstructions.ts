@@ -197,6 +197,7 @@ export const useTokenOperations = (
     dustReceiver,
     referralAccountPubkey,
     referralProgramId,
+    bundleTip,
     raydiumUrl,
     setSelectedItems,
     jupiterQuoteApi,
