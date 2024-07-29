@@ -259,6 +259,7 @@ export const useTokenOperations = (
       const bundleId = await sendTxUsingJito(signedChunks.map((tx: any) => tx.serialize()));
       setMessage('Sending transaction: ' + bundleId);
       const bundleStatus = await getBundleStatus(bundleId);
+      setSelectedItems(new Set());
       if (bundleStatus.result.value.length > 0) {
         console.log(`Completed sending transaction batch: ${JSON.stringify(bundleStatus)}`);
         setSelectedItems(new Set());

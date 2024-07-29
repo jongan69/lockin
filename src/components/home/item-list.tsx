@@ -229,7 +229,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           onClick={handleCloseTokenAccounts} // Handle close token accounts event
           className="close-token-accounts-button"
         >
-          Close Free Token Accounts
+          Close ({closableTokenAccounts.length} Accounts)
         </button>
       )}
 
