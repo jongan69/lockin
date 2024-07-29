@@ -171,7 +171,7 @@ export async function handleTokenData(
     // Get floor price
     // console.log(`Is NFT: ${metadata?.isNft}, Getting floor price for ${metadata?.collectionName}(${mintAddress})`)
     price = floorPrice.usdValue || 0;
-    console.log(`${metadata.collectionName} NFT Floor price: ${price}`)
+    console.log(`${metadata.collectionName} NFT Floor price: $${price}`)
   } else {
     price = jupiterPrice.data[mintAddress]?.price || 0;
   }

@@ -104,3 +104,19 @@ code {
   background-color: #0056b3; /* Darker blue on hover */
 }
 
+.close-token-accounts-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding: 10px 20px;
+  background-color: #007bff; /* Blue color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.close-token-accounts-button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}

@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import Bottleneck from 'bottleneck';
 import { useConnection } from '@solana/wallet-adapter-react';
 
-const useTokenBalance = (tokenAccountAddress: string) => {
+export const useTokenBalance = (tokenAccountAddress: string) => {
   const { connection } = useConnection();
   const [balance, setBalance] = useState<any>(0);
   const [balanceLoading, setLoading] = useState(true);
@@ -44,5 +44,3 @@ const useTokenBalance = (tokenAccountAddress: string) => {
 
   return { balance, balanceLoading, error };
 };
-
-export default useTokenBalance;
