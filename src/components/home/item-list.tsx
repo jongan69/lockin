@@ -7,7 +7,7 @@ import { DEFAULT_TOKEN, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from 
 import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
-import { useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions";
+import { useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
 
 type Props = {
   initialItems: Array<TokenData>; // Define prop type for initial items
@@ -25,6 +25,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [closedTokenAccounts, setClosedTokenAccounts] = useState(new Set()); // Initialize closed token accounts state
   const [closableTokenAccounts, setClosableTokenAccounts] = useState(initialItems); // Initialize closable token accounts state
   const [nfts, setNfts] = useState(initialItems); // Initialize NFTs state
+  const [tipAmount, setTipAmount] = useState(1000); // Initialize tip amount state
 
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
@@ -35,9 +36,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET); // Referral account public key
   const referralProgramId = REFER_PROGRAM_ID; // Referral program ID
 
-  const bundleTip = 1000; // Bundle tip amount in lamports
-
-  // Get sendTransactionBatch function and sending state from useSendBatchTransaction hook
   const { sendTransactionBatch, sending: sendingBatch } = useSendBatchTransaction();
 
   const { handleClosePopup, sending } = useCreateSwapInstructions(
@@ -48,13 +46,12 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     dustReceiver,
     referralAccountPubkey,
     referralProgramId,
-    bundleTip,
+    tipAmount, // Use the state variable instead of the hardcoded value
     setShowPopup,
     setSelectedItems,
     setClosedTokenAccounts
   );
-  
-  // Handle item click event
+
   const handleItemClick = (item: TokenData) => {
     if (item.isNft && item.amount > 0) {
       return; // Ignore selection if the item is an NFT as we can't do anything with it 
@@ -76,7 +73,13 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     });
   };
 
-  // Handle confirm selection event
+  const handleTipChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value, 10);
+    if (!isNaN(value)) {
+      setTipAmount(value); // Update tip amount state
+    }
+  };
+
   const handleConfirmSelection = () => {
     if (selectedItems.size > 0) {
       setShowPopup(true); // Show confirmation popup
@@ -86,7 +89,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     }
   };
 
-  // Handle close token accounts event
   const handleCloseTokenAccounts = async () => {
     if (closableTokenAccounts.length > 0 && publicKey && signAllTransactions) {
       let closeAccountInstructions: TransactionInstruction[] = [];
@@ -103,7 +105,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     }
   };
 
-  // Effect to sort tokens and set sorted items state
   useEffect(() => {
     const sortedItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
@@ -113,7 +114,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     setSortedItems(sortedItems); // Update sorted items state
   }, [closedTokenAccounts, items]);
 
-  // Effect to sort NFTs and set NFTs state
   useEffect(() => {
     const nfts = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
@@ -122,7 +122,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     setNfts(nfts); // Update NFTs state
   }, [closedTokenAccounts, items]);
 
-  // Effect to find closable token accounts and set closable token accounts state
   useEffect(() => {
     const closeableItems = [...items]
       .filter(item => !closedTokenAccounts.has(item.tokenAddress))
@@ -134,6 +133,18 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     <div>
       <h2 className="text-center text-primary m-10">{items.length} Token Accounts</h2>
       <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
+      <div className="tip-amount-container">
+        <label htmlFor="tip-amount" className="block text-sm font-medium text-white bold">
+          Jito Bundle Tip Amount (lamports):
+        </label>
+        <input
+          type="number"
+          id="tip-amount"
+          value={tipAmount}
+          onChange={handleTipChange}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+        />
+      </div>
       <h1 className="text-center text-primary m-10">Swappable Tokens</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (

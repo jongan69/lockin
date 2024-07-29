@@ -78,6 +78,13 @@ code {
   cursor: url('../../public/lock.png') 16 16, auto;
 } */
 
+.tip-amount-container {
+  border-radius: 10px;
+  text-align: center;
+  width: 50%;
+  margin: 0 auto;
+}
+
 .custom-lock-cursor {
   cursor: crosshair;
 }
