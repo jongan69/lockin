@@ -50,7 +50,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     referralAccountPubkey,
     referralProgramId,
     bundleTip,
-    raydiumUrl,
     setShowPopup,
     setSelectedItems,
     setClosedTokenAccounts
@@ -98,6 +97,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       }
       // Send transaction batch to close token accounts
       await sendTransactionBatch(closeAccountInstructions, publicKey, signAllTransactions, connection, setMessage, sendTransaction, 'Closing token accounts');
+      setClosableTokenAccounts([]); // Reset closable token accounts
     } else {
       toast.error("Error Closing Token Accounts, Please Reload Page."); // Show error toast
       setClosableTokenAccounts([]); // Reset closable token accounts
@@ -238,7 +238,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           onClick={handleConfirmSelection} // Handle confirm selection event
           className="confirm-selection-button"
         >
-          Confirm Selection ({selectedItems.size} Selected)
+          Confirm ({selectedItems.size} Selected)
         </button>
       )}
 

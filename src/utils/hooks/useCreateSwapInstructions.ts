@@ -18,7 +18,6 @@ export const useTokenOperations = (
   referralAccountPubkey: PublicKey,
   referralProgramId: PublicKey,
   bundleTip: number,
-  raydiumUrl: string,
   setShowPopup: (show: boolean) => void,
   setSelectedItems: (items: Set<any>) => void,
   setClosedTokenAccounts: any,
@@ -194,11 +193,11 @@ export const useTokenOperations = (
     connection,
     setShowPopup,
     targetTokenMintAddress,
-    dustReceiver,
+    // dustReceiver,
     referralAccountPubkey,
     referralProgramId,
     bundleTip,
-    raydiumUrl,
+    // raydiumUrl,
     setSelectedItems,
     jupiterQuoteApi,
     setClosedTokenAccounts
@@ -262,8 +261,10 @@ export const useTokenOperations = (
       const bundleStatus = await getBundleStatus(bundleId);
       if (bundleStatus.result.value.length > 0) {
         console.log(`Completed sending transaction batch: ${JSON.stringify(bundleStatus)}`);
+        setSelectedItems(new Set());
       } else {
         console.error(`Error during transaction batch send: ${JSON.stringify(bundleStatus)}`);
+        setMessage('FUCK SOMETHING HAPPENED: ' + bundleId + JSON.stringify(bundleStatus));
       }
     } catch (error: any) {
       console.error(`Error during transaction batch send: ${description}`, error.toString());
