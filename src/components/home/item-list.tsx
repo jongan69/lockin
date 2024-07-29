@@ -238,7 +238,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           onClick={handleConfirmSelection} // Handle confirm selection event
           className="confirm-selection-button"
         >
-          Confirm ({selectedItems.size} Selected)
+          Lockin ({selectedItems.size} Selected)
         </button>
       )}
 
