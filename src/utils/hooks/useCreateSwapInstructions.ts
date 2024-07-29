@@ -72,7 +72,11 @@ export async function getTipAccounts(): Promise<string> {
   }
 
   // returns an Array of Bundler Tip Addresses
-  return json.result[0];
+  const tipAccounts = json.result;
+
+  // Return a random address from the array
+  const randomIndex = Math.floor(Math.random() * tipAccounts.length);
+  return tipAccounts[randomIndex];
 }
 
 export async function sendTxUsingJito(serializedTxs: (Uint8Array | Buffer | number[])[]): Promise<string> {
