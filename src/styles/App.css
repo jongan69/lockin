@@ -85,6 +85,13 @@ code {
   margin: 0 auto;
 }
 
+.maxBps-container {
+  border-radius: 10px;
+  text-align: center;
+  width: 50%;
+  margin: 0 auto;
+}
+
 .custom-lock-cursor {
   cursor: crosshair;
 }

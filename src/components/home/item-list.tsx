@@ -26,6 +26,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [closableTokenAccounts, setClosableTokenAccounts] = useState(initialItems); // Initialize closable token accounts state
   const [nfts, setNfts] = useState(initialItems); // Initialize NFTs state
   const [tipAmount, setTipAmount] = useState(1000); // Initialize tip amount state
+  const [maxBps, setmaxBps] = useState(100); // Initialize tip amount state
 
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
@@ -44,6 +45,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     signAllTransactions,
     targetTokenMintAddress,
     dustReceiver,
+    maxBps,
     referralAccountPubkey,
     referralProgramId,
     tipAmount, // Use the state variable instead of the hardcoded value
@@ -77,6 +79,13 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     const value = parseInt(event.target.value, 10);
     if (!isNaN(value)) {
       setTipAmount(value); // Update tip amount state
+    }
+  };
+
+  const handleBpsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value, 10);
+    if (!isNaN(value)) {
+      setmaxBps(value); // Update tip amount state
     }
   };
 
@@ -145,6 +154,20 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
         />
       </div>
+
+      <div className="maxBps-container">
+        <label htmlFor="maxBps" className="block text-sm font-medium text-white bold">
+          Max BPS Slippage for Jupiter Swaps (lamports):
+        </label>
+        <input
+          type="number"
+          id="maxBps-amount"
+          value={maxBps}
+          onChange={handleBpsChange}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+        />
+      </div>
+      
       <h1 className="text-center text-primary m-10">Swappable Tokens</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (
