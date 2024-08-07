@@ -206,10 +206,11 @@ export const useCreateSwapInstructions = (
     targetTokenMintAddress,
     referralAccountPubkey,
     referralProgramId,
+    maxBps,
     bundleTip,
     setSelectedItems,
     jupiterQuoteApi,
-    setClosedTokenAccounts
+    setClosedTokenAccounts,
   ]);
 
   const fetchQuoteWithRetries = async (apiClient: any, params: QuoteGetRequest) => {
