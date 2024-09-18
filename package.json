@@ -34,7 +34,7 @@
     "daisyui": "^2.46.1",
     "fs": "^0.0.1-security",
     "jito-ts": "^4.1.1",
-    "next": "14.1.1",
+    "next": "14.2.10",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hot-toast": "^2.4.0",
