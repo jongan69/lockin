@@ -1,19 +1,11 @@
-export function Footer() {
+import React from "react";
+
+export const Footer: React.FC = () => {
   return (
-    <footer className="footer footer-center p-4 text-base-content">
-      <div>
-        <p>
-          Powered by{" "}
-          <a
-            href="https://dexscreener.com/solana/atwmaa6t9t8cq8xccccfpgdnnqyxhscunuy6wvri7fke"
-            target="_blank"
-            rel="noreferrer"
-            className="link link-primary"
-          >
-            The Lockin Factory
-          </a>
-        </p>
+    <footer className="mt-20 py-8 border-t border-base-300">
+      <div className="text-center text-base-content/70">
+        <p>Built with ❤️ on Solana</p>
       </div>
     </footer>
   );
-}
+};

@@ -7,9 +7,9 @@ export const SOLANA_DEV = clusterApiUrl(WalletAdapterNetwork.Devnet);
 export const GENESYSGO = "https://ssc-dao.genesysgo.net";
 export const METAPLEX = "https://api.metaplex.solana.com";
 export const SERUM = "https://solana-api.projectserum.com";
-export const HELIUS = `${process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT}`;
+export const HELIUS = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
 
 export const BLOCKENGINE = `mainnet.block-engine.jito.wtf`
 
 // You can use any of the other enpoints here
-export const NETWORK = HELIUS;
+export const NETWORK = HELIUS ?? SOLANA_MAIN;

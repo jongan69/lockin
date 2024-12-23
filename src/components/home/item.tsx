@@ -8,6 +8,10 @@ type ImageProps = {
   alt: string; // Alternative text for the image
 };
 
+const truncateData = (data: string) => {
+  return data.slice(0, 4) + "..." + data.slice(-4);
+};
+
 // Default image URL if no image is provided
 const DEFAULT_IMAGE_URL =
   process.env.UNKNOWN_IMAGE_URL ||
@@ -66,10 +70,10 @@ export function Item({ data }: ItemProps) {
         </figure>
       )}
       <div className="card-body p-4 items-center text-center">
-        <h2 className="card-title m-0">{name}</h2>
+        <h2 className="card-title m-0">{name ? truncateData(name) : ''}</h2>
         {isNft && <p>NFT Collection Name: {collectionName}</p>}
         <p>
-          {symbol}: {Number(amount).toFixed(5)} (≈ ${usdValue})
+          {symbol ? (symbol.length > 10 ? truncateData(symbol) : symbol) : ''} : {Number(amount).toFixed(5)} (≈ ${usdValue})
         </p>
       </div>
     </div>

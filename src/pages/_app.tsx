@@ -4,12 +4,15 @@ import dynamic from "next/dynamic";
 import { ConnectionProvider } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import ClientWalletProvider from "@components/contexts/ClientWalletProvider";
-import { NETWORK } from "@utils/endpoints";
+import { HELIUS } from "@utils/endpoints";
 
 import "../styles/globals.css";
 import "../styles/App.css";
 import { Toaster } from "react-hot-toast";
 
+const endpoint = HELIUS!;
+
+console.log("endpoint", endpoint);
 const ReactUIWalletModalProviderDynamic = dynamic(
   async () =>
     (await import("@solana/wallet-adapter-react-ui")).WalletModalProvider,
@@ -20,7 +23,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint={NETWORK}>
+    <ConnectionProvider endpoint={endpoint}>
       <ClientWalletProvider wallets={wallets}>
         <ReactUIWalletModalProviderDynamic>
           <Toaster position="bottom-right" reverseOrder={true} />

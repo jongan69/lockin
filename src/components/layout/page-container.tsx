@@ -1,13 +1,13 @@
-type Props = {
-  children: React.ReactNode;
-};
+import React from "react";
 
-export function PageContainer({ children }: Props) {
+export const PageContainer: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   return (
-    <div className="drawer-content flex flex-col">
-      <div className="container min-h-screen grid grid-rows-[auto,1fr,auto] mx-auto max-w-6xl p-8 2xl:px-0">
+    <main className="min-h-screen bg-gradient-to-b from-base-100 to-base-200">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         {children}
       </div>
-    </div>
+    </main>
   );
-}
+};

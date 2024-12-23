@@ -5,18 +5,95 @@ import { fetchIpfsMetadata } from "./fetchIpfsMetadata";
 import { extractCidFromUrl } from "./extractCidFromUrl";
 import { fetchJupiterSwap } from "./fetchJupiterSwap";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
+import { LOCKIN_MINT, TOKEN_PROGRAM_ID_ADDRESS } from "@utils/globals";
 import { Instruction } from "@jup-ag/api";
 import { fetchFloorPrice } from "./fetchFloorPrice";
+import { NETWORK } from "@utils/endpoints";
+import { createJupiterApiClient, QuoteGetRequest } from "@jup-ag/api";
 
-const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;
-const connection = new Connection(RPC_ENDPOINT);
+const ENDPOINT = NETWORK;
+
+// Add validation for the endpoint URL
+if (!ENDPOINT || (!ENDPOINT.startsWith('http:') && !ENDPOINT.startsWith('https:'))) {
+  console.log(`ENDPOINT: ${ENDPOINT}`);
+  throw new Error('Invalid RPC endpoint URL. Must start with http: or https:');
+}
+
+console.log(`ENDPOINT: ${ENDPOINT}`);
+const connection = new Connection(ENDPOINT);
 const metaplex = Metaplex.make(connection);
 const DEFAULT_IMAGE_URL = process.env.UNKNOWN_IMAGE_URL || "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
 
-// Rate limiters
-const rpcLimiter = new Bottleneck({ maxConcurrent: 10, minTime: 100 });
-export const apiLimiter = new Bottleneck({ maxConcurrent: 5, minTime: 100 });
+// Modify the rate limiters at the top
+const rpcLimiter = new Bottleneck({
+  maxConcurrent: 5, // Reduce concurrent requests
+  minTime: 200, // Increase delay between requests
+  reservoir: 30, // Initial tokens
+  reservoirRefreshAmount: 30, // Tokens to refresh
+  reservoirRefreshInterval: 1000, // Refresh every second
+  retryCount: 3, // Number of retries
+  retryDelay: 1000, // Delay between retries
+});
+
+export const apiLimiter = new Bottleneck({
+  maxConcurrent: 3, // Reduce concurrent requests
+  minTime: 333, // About 3 requests per second
+  reservoir: 20, // Initial tokens
+  reservoirRefreshAmount: 20, // Tokens to refresh
+  reservoirRefreshInterval: 1000, // Refresh every second
+  retryCount: 3,
+  retryDelay: 1000,
+});
+
+// Add retry wrapper function
+const withRetry = async <T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> => {
+  let lastError;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      if (error.toString().includes('rate limit') || error.toString().includes('429')) {
+        console.log(`Rate limit hit, attempt ${i + 1}/${maxRetries}, waiting ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1))); // Exponential backoff
+        continue;
+      }
+      throw error; // Throw non-rate-limit errors immediately
+    }
+  }
+  throw lastError;
+};
+
+// Add these constants at the top
+const MAX_TOKEN_FETCH_RETRIES = 2;
+const TOKEN_FETCH_RETRY_DELAY = 1000;
+
+// Add a retry wrapper function
+const withTokenRetry = async <T>(
+  operation: () => Promise<T>,
+  tokenIdentifier: string
+): Promise<T | null> => {
+  let attempts = 0;
+  while (attempts < MAX_TOKEN_FETCH_RETRIES) {
+    try {
+      return await operation();
+    } catch (error) {
+      attempts++;
+      console.error(`Attempt ${attempts} failed for token ${tokenIdentifier}:`, error);
+      if (attempts < MAX_TOKEN_FETCH_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, TOKEN_FETCH_RETRY_DELAY));
+        continue;
+      }
+      console.log(`Skipping token ${tokenIdentifier} after ${attempts} failed attempts`);
+      return null;
+    }
+  }
+  return null;
+};
 
 export type TokenData = {
   decimals: number;
@@ -31,6 +108,7 @@ export type TokenData = {
   collectionName?: string;
   collectionLogo?: string;
   isNft?: boolean;
+  swappable: boolean;
 };
 
 export async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
@@ -40,13 +118,13 @@ export async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
       .pdas()
       .metadata({ mint: mintAddress });
 
-    const metadataAccountInfo = await rpcLimiter.schedule(() =>
-      connection.getAccountInfo(metadataAccount)
+    const metadataAccountInfo = await withRetry(() =>
+      rpcLimiter.schedule(() => connection.getAccountInfo(metadataAccount))
     );
 
     if (metadataAccountInfo) {
-      const token = await rpcLimiter.schedule(() =>
-        metaplex.nfts().findByMint({ mintAddress: mintAddress })
+      const token = await withRetry(() =>
+        rpcLimiter.schedule(() => metaplex.nfts().findByMint({ mintAddress: mintAddress }))
       );
 
       const cid = extractCidFromUrl(token.uri);
@@ -139,44 +217,76 @@ async function fetchCollectionMetadata(collectionAddress: PublicKey) {
 }
 
 export async function fetchTokenAccounts(publicKey: PublicKey) {
-  return rpcLimiter.schedule(() =>
-    connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId: TOKEN_PROGRAM_ID_ADDRESS,
-    })
+  return withRetry(() =>
+    rpcLimiter.schedule(() =>
+      connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID_ADDRESS,
+      })
+    )
   );
 }
 
 export async function handleTokenData(
-  publicKey: PublicKey, tokenAccount: any, apiLimiter: any) {
+  publicKey: PublicKey,
+  tokenAccount: any,
+  rateLimiter: any
+): Promise<TokenData | null> {
   const mintAddress = tokenAccount.account.data.parsed.info.mint;
   const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
   const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
 
-  const [tokenAccountAddress] = await PublicKey.findProgramAddress(
+  const [tokenAccountAddress] = PublicKey.findProgramAddressSync(
     [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), new PublicKey(mintAddress).toBuffer()],
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  const jupiterPrice = await apiLimiter.schedule(() =>
-    fetchJupiterSwap(mintAddress)
+  // Get Jupiter price with retry
+  const jupiterPrice = await withTokenRetry(
+    () => apiLimiter.schedule(() => fetchJupiterSwap(mintAddress)),
+    mintAddress
+  );
+  
+  if (!jupiterPrice) {
+    console.log(`Skipping token ${mintAddress} due to Jupiter price fetch failure`);
+    return null;
+  }
+
+  // Get metadata with retry
+  const metadata = await withTokenRetry(
+    () => fetchTokenMetadata(new PublicKey(mintAddress), mintAddress),
+    mintAddress
   );
 
-  const metadata = await fetchTokenMetadata(new PublicKey(mintAddress), mintAddress);
-  // Need to add check if NFT to get floor price as price
-  let price = 0
+  if (!metadata) {
+    console.log(`Skipping token ${mintAddress} due to metadata fetch failure`);
+    return null;
+  }
+
+  let price = 0;
   if (metadata && metadata.isNft) {
-    const floorPrice = await apiLimiter.schedule(() =>
-      fetchFloorPrice(mintAddress)
+    // Get floor price with retry
+    const floorPrice = await withTokenRetry(
+      () => apiLimiter.schedule(() => fetchFloorPrice(mintAddress)),
+      mintAddress
     );
-    // Get floor price
-    // console.log(`Is NFT: ${metadata?.isNft}, Getting floor price for ${metadata?.collectionName}(${mintAddress})`)
-    price = floorPrice.usdValue || 0;
-    console.log(`${metadata.collectionName} NFT Floor price: $${price}`)
+    
+    price = floorPrice?.usdValue || 0;
+    console.log(`${metadata.collectionName} NFT Floor price: $${price}`);
   } else {
     price = jupiterPrice.data[mintAddress]?.price || 0;
   }
 
   const usdValue = amount * price;
+
+  // Check if token is swappable with retry
+  const isSwappable = await withTokenRetry(
+    () => isTokenSwappable(
+      mintAddress,
+      LOCKIN_MINT,
+      tokenAccount.account.data.parsed.info.tokenAmount.amount
+    ),
+    mintAddress
+  ) ?? false; // Default to false if swappable check fails
 
   return {
     mintAddress,
@@ -185,6 +295,7 @@ export async function handleTokenData(
     decimals,
     usdValue,
     ...metadata,
+    swappable: isSwappable,
   };
 }
 
@@ -219,3 +330,29 @@ export const getAddressLookupTableAccounts = async (connection: Connection, keys
     return acc;
   }, []);
 };
+
+export async function isTokenSwappable(inputMint: string, targetMint: string, amount: number): Promise<boolean> {
+  if (inputMint === LOCKIN_MINT) {
+    return true;
+  }
+  
+  const jupiterQuoteApi = createJupiterApiClient();
+  
+  try {
+    return await withRetry(async () => {
+      const params: QuoteGetRequest = {
+        inputMint: inputMint,
+        outputMint: targetMint,
+        amount: amount,
+        slippageBps: 50,
+        onlyDirectRoutes: false,
+      };
+
+      const quote = await jupiterQuoteApi.quoteGet(params) as any;
+      return quote?.routes?.length > 0;
+    });
+  } catch (error) {
+    console.log(`Token ${inputMint} is not swappable:`, error);
+    return false;
+  }
+}

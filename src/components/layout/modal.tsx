@@ -11,60 +11,56 @@ type Props = {
   id: string;
 };
 
-export function Modal({
+export const Modal: React.FC<Props> = ({
   onClick,
   butttonState,
   headerContent,
   buttonContent,
   isToken = false,
   id,
-}: Props) {
-  const [address, setAddress] = React.useState<string | undefined>();
-  const [amount, setAmount] = React.useState<string | undefined>();
-
+}) => {
   return (
-    <>
-      <input type="checkbox" id={id} className="modal-toggle" />
-      <label htmlFor={id} className="modal cursor-pointer">
-        <label className="modal-box relative" htmlFor="">
-          <h3 className="font-bold text-xl mb-2">{headerContent}</h3>
-          <div className="form-control w-full mb-2">
+    <dialog id={id} className="modal modal-bottom sm:modal-middle">
+      <div className="modal-box bg-base-200 shadow-lg border border-base-300">
+        <h3 className="font-bold text-2xl mb-6 text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          {headerContent}
+        </h3>
+        <div className="space-y-4">
+          <div className="form-control">
             <label className="label">
-              <span className="label-text">Wallet Address</span>
+              <span className="label-text">Recipient Address</span>
             </label>
             <input
               type="text"
-              placeholder={DEFAULT_WALLET}
-              className="input input-bordered w-full"
-              onChange={(ev) => setAddress(ev.currentTarget.value)}
+              placeholder="Enter Solana address"
+              className="input input-bordered w-full focus:input-primary"
             />
           </div>
-          <div className="form-control w-full">
+          <div className="form-control">
             <label className="label">
               <span className="label-text">Amount</span>
             </label>
             <input
               type="number"
-              placeholder="1"
-              className="input input-bordered w-full"
-              onChange={(ev) => setAmount(ev.currentTarget.value)}
+              placeholder={`Enter amount in ${isToken ? "LOCKIN" : "SOL"}`}
+              className="input input-bordered w-full focus:input-primary"
             />
           </div>
-          <div className="modal-action">
-            <Button
-              state={butttonState}
-              onClick={onClick({
-                isToken,
-                address,
-                amount,
-              })}
-              className="btn-primary"
+        </div>
+        <div className="modal-action">
+          <form method="dialog" className="flex space-x-2 w-full">
+            <button className="btn btn-ghost flex-1">Cancel</button>
+            <button
+              onClick={onClick({ isToken })}
+              className={`btn btn-primary flex-1 ${
+                butttonState === "loading" ? "loading" : ""
+              }`}
             >
               {buttonContent}
-            </Button>
-          </div>
-        </label>
-      </label>
-    </>
+            </button>
+          </form>
+        </div>
+      </div>
+    </dialog>
   );
-}
+};

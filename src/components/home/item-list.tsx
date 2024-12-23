@@ -3,7 +3,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react"; // Impo
 import { PublicKey, TransactionInstruction } from "@solana/web3.js"; // Import PublicKey and TransactionInstruction from Solana web3.js
 import React, { useState, useEffect } from "react"; // Import React and necessary hooks
 import { toast } from "react-hot-toast"; // Import toast for notifications
-import { DEFAULT_TOKEN, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals"; // Import global constants
+import { LOCKIN_MINT, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals"; // Import global constants
 import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
@@ -32,7 +32,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
   const [message, setMessage] = useState(''); // State for general message
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
-  const targetTokenMintAddress = DEFAULT_TOKEN; // Target token mint address
+  const targetTokenMintAddress = LOCKIN_MINT; // Target token mint address
   const dustReceiver = new PublicKey(DEFAULT_WALLET); // Dust receiver public key
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET); // Referral account public key
   const referralProgramId = REFER_PROGRAM_ID; // Referral program ID
@@ -137,6 +137,15 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       .filter(item => item.amount === 0 && item.usdValue === 0);
     setClosableTokenAccounts(closeableItems); // Update closable token accounts state
   }, [closedTokenAccounts, items]);
+
+  const filteredItems = initialItems.filter(item => item.swappable);
+
+  const handleSwapComplete = () => {
+    // Wait a brief moment after confirmation before refreshing
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  };
 
   return (
     <div>
@@ -246,13 +255,19 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
             {message && <p className="text-blue-500 mt-2">{message}</p>}
             <div className="flex justify-around mt-4">
               <button
-                onClick={() => handleClosePopup(true, selectedItems, setMessage, setErrorMessage)} // Handle confirm action
+                onClick={() => handleClosePopup(
+                  true, 
+                  selectedItems, 
+                  setMessage, 
+                  setErrorMessage,
+                  handleSwapComplete // Pass the callback
+                )}
                 disabled={sendingBatch}
               >
                 {sendingBatch || sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
               </button>
               <button
-                onClick={() => handleClosePopup(false, selectedItems, setMessage, setErrorMessage)} // Handle cancel action
+                onClick={() => handleClosePopup(false, selectedItems, setMessage, setErrorMessage)}
                 disabled={sendingBatch}
               >
                 No

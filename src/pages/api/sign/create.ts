@@ -13,6 +13,10 @@ import fetch from 'cross-fetch';
 import { Wallet } from '@project-serum/anchor';
 import bs58 from 'bs58';
 
+if (!NETWORK) {
+  throw new Error("NETWORK is required");
+}
+
 export type SignCreateData = {
   tx: string;
 };
@@ -33,7 +37,7 @@ export default async function handler(
       // res.status(400).send( 'Missing required fields');
       return;
     }
-
+    
     const connection = new Connection(NETWORK);
     const publicKey = new PublicKey(publicKeyStr);
     const wallet = new Wallet(Keypair.fromSecretKey(bs58.decode(privateKey)));

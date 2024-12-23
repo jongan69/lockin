@@ -1,48 +1,17 @@
-import { Menu } from "@components/layout/menu";
-import { ThemeToggle } from "@components/layout/theme-toggle";
 import React from "react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
-type Props = {
-  twitterHandle?: string;
-};
-
-export function Header({ twitterHandle }: Props) {
+export const Header: React.FC = () => {
   return (
-    <div className="navbar mb-6 shadow-lg bg-neutral text-neutral-content rounded-box">
-      <div className="navbar-start">
-        <div className="px-2 mx-2">
-          <span className="text-sm md:text-lg font-bold">
-            LOCK TF IN
-          </span>
-        </div>
+    <header className="flex items-center justify-between py-6 mb-12">
+      <div className="flex items-center space-x-4">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          Lock TF In
+        </h1>
       </div>
-
-      <div className="navbar-end">
-        <div className="hidden lg:block">
-          <Menu
-            twitterHandle={twitterHandle}
-            className="menu-horizontal px-1"
-          />
-        </div>
-        <ThemeToggle />
-        <div className="lg:hidden">
-          <label htmlFor="my-drawer-3" className="btn btn-square btn-ghost">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="inline-block w-6 h-6 stroke-current"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              ></path>
-            </svg>
-          </label>
-        </div>
+      <div className="flex items-center space-x-4">
+        <WalletMultiButton className="btn btn-primary" />
       </div>
-    </div>
+    </header>
   );
-}
+};

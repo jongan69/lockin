@@ -122,40 +122,25 @@ const Home: NextPage = () => {
         <title>Lock TF In</title>
         <meta
           name="description"
-          content="Lock TF In"
+          content="Send $LOCKIN tokens and SOL to your loved ones"
         />
       </Head>
-      <DrawerContainer>
-        <PageContainer>
-          <Header
-          // twitterHandle={twitterHandle} 
-          />
+      <PageContainer>
+        <Header />
+        <div className="max-w-3xl mx-auto text-center space-y-8">
+          <h2 className="text-5xl font-bold mb-4">
+            It&apos;s time to {" "}
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              LOCK THE FUCK IN
+            </span>{" "}
+          </h2>
+          <p className="text-xl text-base-content/80 mb-8">
+            Choose Tokens you&apos;d like to swap for $LOCKIN
+          </p>
           <HomeContent />
-          <Footer />
-        </PageContainer>
-        <div className="drawer-side">
-          <label htmlFor="my-drawer-3" className="drawer-overlay"></label>
-          <Menu
-            // twitterHandle={twitterHandle}
-            className="p-4 w-80 bg-base-100 text-base-content"
-          />
         </div>
-      </DrawerContainer>
-      <Modal
-        onClick={onTxClick}
-        butttonState={txState}
-        headerContent="$LOCKIN to someone you love"
-        buttonContent="Send $LOCKIN"
-        isToken={true}
-        id="bonk-modal"
-      />
-      <Modal
-        onClick={onTxClick}
-        butttonState={txState}
-        headerContent="Send some SOL to someone you love"
-        buttonContent="Send SOL"
-        id="sol-modal"
-      />
+        <Footer />
+      </PageContainer>
     </>
   );
 };

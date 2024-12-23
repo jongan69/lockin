@@ -16,6 +16,8 @@ export function HomeContent() {
   const [totalAccounts, setTotalAccounts] = useState<number>(0); // State for storing the total number of accounts
   const { balance } = useTokenBalance(FEE_ADDRESS); // Get the balance using useTokenBalance hook
   const [totalValue, setTotalValue] = useState<number>(0); // State for tracking the total value
+  const [swappableTokenCount, setSwappableTokenCount] = useState<number>(0);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
 
   // Effect to reset sign state if the public key changes
   useEffect(() => {
@@ -34,37 +36,45 @@ export function HomeContent() {
   useEffect(() => {
     const sign = async () => {
       if (publicKey && signTransaction && signState === "initial") {
-        setLoading(true); // Set loading state to true
-        setSignState("loading"); // Set sign state to loading
-        const signToastId = toast.loading("Getting Token Data..."); // Show loading toast notification
+        setLoading(true);
+        setSignState("loading");
+        const signToastId = toast.loading("Getting Token Data...");
 
         try {
-          const tokenAccounts = await fetchTokenAccounts(publicKey); // Fetch token accounts
-          setTotalAccounts(tokenAccounts.value.length); // Set the total number of accounts
+          const tokenAccounts = await fetchTokenAccounts(publicKey);
+          setTotalAccounts(tokenAccounts.value.length);
 
           // Fetch token data for each account
-          const tokenDataPromises = tokenAccounts.value.map((tokenAccount) =>
-            handleTokenData(publicKey, tokenAccount, apiLimiter).then((tokenData) => {
-              updateTotalValue(tokenData.usdValue); // Update the total value with the token data's USD value
-              return tokenData; // Return the token data
-            })
-          );
+          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount) => {
+            const tokenData = await handleTokenData(publicKey, tokenAccount, apiLimiter);
+            if (tokenData?.swappable) {
+              updateTotalValue(tokenData.usdValue);
+              setSwappableTokenCount(prev => prev + 1);
+            }
+            return tokenData;
+          });
 
-          const tokens = await Promise.all(tokenDataPromises); // Wait for all token data promises to resolve
-          setTokens(tokens); // Set the token data state
-          setSignState("success"); // Set the sign state to success
-          toast.success("Token Data Retrieved", { id: signToastId }); // Show success toast notification
-        } catch (error) {
-          setSignState("error"); // Set the sign state to error
-          toast.error("Error verifying wallet, please reconnect wallet", { id: signToastId }); // Show error toast notification
-          console.error(error); // Log the error to the console
+          const tokens = (await Promise.all(tokenDataPromises))
+            .filter((token): token is TokenData => token !== null);
+          setTokens(tokens);
+          setSignState("success");
+          setRateLimitMessage(null); // Clear rate limit message on complete success
+          toast.success("Token Data Retrieved", { id: signToastId });
+        } catch (error: any) {
+          setSignState("error");
+          if (error.toString().includes('rate limit') || error.toString().includes('429')) {
+            toast.error("Rate limit reached. Please try again in a few moments.", { id: signToastId });
+          } else {
+            toast.error("Error verifying wallet, please reconnect wallet", { id: signToastId });
+          }
+          console.error(error);
         } finally {
-          setLoading(false); // Set loading state to false
+          setLoading(false);
         }
       }
     };
 
-    sign(); // Call the sign function
+    sign();
   }, [signState, signTransaction, publicKey]);
 
   // Render loading state or token data fetching state
@@ -72,8 +82,18 @@ export function HomeContent() {
     return (
       <>
         <p>Found {totalAccounts} Accounts, Getting Token Data...</p>
-        <div className="flex justify-center items-center h-screen">
-          <Circles color="#00BFFF" height={80} width={80} /> {/* Loader component */}
+        {rateLimitMessage && (
+          <p className="text-yellow-500 text-center mt-2 mb-4">
+            {rateLimitMessage}
+          </p>
+        )}
+        <div className="flex flex-col justify-center items-center h-screen">
+          <Circles color="#00BFFF" height={80} width={80} />
+          <p className="text-sm text-gray-500 mt-4">
+            {rateLimitMessage ? 
+              "This may take a moment due to rate limiting..." :
+              "Loading token data..."}
+          </p>
         </div>
       </>
     );
@@ -91,7 +111,10 @@ export function HomeContent() {
     <div className="grid grid-cols-1">
       {hasFetchedData ? (
         <div>
-          <ItemList initialItems={tokens} totalValue={totalValue} /> {/* Render ItemList with token data and total value */}
+          <p className="text-center p-4">
+            Found {swappableTokenCount} swappable tokens out of {totalAccounts} total tokens
+          </p>
+          <ItemList initialItems={tokens} totalValue={totalValue} />
         </div>
       ) : (
         <div className="text-center">
