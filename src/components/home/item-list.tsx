@@ -17,7 +17,7 @@ type Props = {
 export const ItemList = ({ initialItems, totalValue }: Props) => {
   const { publicKey, sendTransaction, signAllTransactions } = useWallet(); // Get wallet details from useWallet hook
   const { connection } = useConnection(); // Get connection from useConnection hook
-  const { closeTokenAccount } = useCloseTokenAccount(); // Get closeTokenAccount function from useCloseTokenAccount hook
+  const { closeTokenAccount, closeTokenAccountsAndSendTransaction } = useCloseTokenAccount(); // Get closeTokenAccount function from useCloseTokenAccount hook
 
   const [items] = useState<TokenData[]>(initialItems); // Initialize items state
   const [sortedItems, setSortedItems] = useState<TokenData[]>(initialItems); // Initialize sorted items state
@@ -100,17 +100,21 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   const handleCloseTokenAccounts = async () => {
     if (closableTokenAccounts.length > 0 && publicKey && signAllTransactions) {
-      let closeAccountInstructions: TransactionInstruction[] = [];
-      for (const closable of closableTokenAccounts) {
-        const closeAccountInstr = await closeTokenAccount(new PublicKey(closable.tokenAddress)); // Get close account instruction
-        closeAccountInstructions.push(closeAccountInstr); // Add instruction to list
+      try {
+        setMessage("Preparing to close accounts...");
+        const tokenAccountPubkeys = closableTokenAccounts.map(
+          account => new PublicKey(account.tokenAddress)
+        );
+        const success = await closeTokenAccountsAndSendTransaction(tokenAccountPubkeys, setMessage);
+        if (success) {
+          setClosableTokenAccounts([]);
+          setMessage("");
+        }
+      } catch (error) {
+        console.error("Error closing accounts:", error);
+        toast.error("Error Closing Token Accounts, Please Reload Page.");
+        setMessage("");
       }
-      // Send transaction batch to close token accounts
-      await sendTransactionBatch(closeAccountInstructions, publicKey, signAllTransactions, connection, setMessage, sendTransaction, 'Closing token accounts');
-      setClosableTokenAccounts([]); // Reset closable token accounts
-    } else {
-      toast.error("Error Closing Token Accounts, Please Reload Page."); // Show error toast
-      setClosableTokenAccounts([]); // Reset closable token accounts
     }
   };
 

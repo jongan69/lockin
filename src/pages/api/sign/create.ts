@@ -2,8 +2,6 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  Transaction,
-  TransactionInstruction,
   VersionedTransaction
 } from "@solana/web3.js";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -38,9 +36,6 @@ export default async function handler(
       return;
     }
     
-    const connection = new Connection(NETWORK);
-    const publicKey = new PublicKey(publicKeyStr);
-    const wallet = new Wallet(Keypair.fromSecretKey(bs58.decode(privateKey)));
 
     // Get the quote for the swap
     const quoteResponse = await (
@@ -67,7 +62,6 @@ export default async function handler(
     const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
     // transaction.feePayer = publicKey;
 
-    const blockHash = (await connection.getLatestBlockhash("finalized")).blockhash;
     // transaction.recentBlockhash = blockHash;
 
     // Serialize the transaction
