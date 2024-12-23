@@ -35,13 +35,14 @@ For feedback on on-chain actions, the dApp integrates [react-hot-toast](https://
 
 ## Getting Started
 
-1. Get an API key from [Helius](https://helius.xyz/) to fetch wallet details.
+1. Get an RPC URL from [Helius](https://helius.xyz/) to fetch wallet details.
 2. Add a `.env.local` file with your Helius API key:
+3. Get an API key from [Simplehash](https://simplehash.com/) to fetch token metadata.
 
 ```
-HELIUS_API_KEY=<your key>
-NEXT_PUBLIC_SOLANA_RPC_ENDPOINT=https://mainnet.helius-rpc.com/?api-key=<your key>
+NEXT_PUBLIC_HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<your key>
 UNKNOWN_IMAGE_URL=https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png
+SIMPLEHASH_API_KEY=<your key>
 ```
 
 3. Run `yarn dev` to start the development server.
