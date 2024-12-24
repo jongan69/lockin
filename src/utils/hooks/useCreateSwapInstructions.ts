@@ -15,9 +15,6 @@ import { toast } from "react-hot-toast";
 import { LOCKIN_MINT, REFER_PROGRAM_ID } from "@utils/globals";
 import { fetchQuoteWithRetries } from "@utils/fetchQuote";
 import bs58 from "bs58";
-import { BLOCKENGINE } from "@utils/endpoints";
-
-const JITO_BUNDLE_ENDPOINT = `https://${BLOCKENGINE}/api/v1/bundles`;
 
 // Constants
 const PLATFORM_FEE_BPS = 10;
@@ -26,34 +23,6 @@ const PLATFORM_FEE_BPS = 10;
 
 // Sleep utility
 // const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Fetch tip accounts
-export async function getTipAccounts(): Promise<string> {
-  const payload = { jsonrpc: "2.0", id: 1, method: "getTipAccounts", params: [] };
-  const res = await fetch(JITO_BUNDLE_ENDPOINT, {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: { "Content-Type": "application/json" },
-  });
-
-  const json = await res.json();
-  if (json.error) throw new Error(json.error.message);
-
-  const tipAccounts = json.result;
-  if (!Array.isArray(tipAccounts) || tipAccounts.length === 0) {
-    throw new Error("No tip accounts available");
-  }
-
-  const selectedAccount = tipAccounts[Math.floor(Math.random() * tipAccounts.length)];
-  
-  try {
-    // Validate the account is a valid public key
-    new PublicKey(selectedAccount);
-    return selectedAccount;
-  } catch (error) {
-    throw new Error(`Invalid tip account format: ${selectedAccount}`);
-  }
-}
 
 // Derive Fee Account
 export async function getFeeAccount(
@@ -68,27 +37,27 @@ export async function getFeeAccount(
 }
 
 // Send a bundle using Jito
-export async function sendBundleUsingJito(serializedTxs: Uint8Array[]): Promise<string> {
-  const payload = {
-    jsonrpc: "2.0",
-    id: 1,
-    method: "sendBundle",
-    params: [serializedTxs.map((tx) => bs58.encode(tx))],
-  };
+// export async function sendBundleUsingJito(serializedTxs: Uint8Array[]): Promise<string> {
+//   const payload = {
+//     jsonrpc: "2.0",
+//     id: 1,
+//     method: "sendBundle",
+//     params: [serializedTxs.map((tx) => bs58.encode(tx))],
+//   };
 
-  const res = await fetch(JITO_BUNDLE_ENDPOINT, {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: { "Content-Type": "application/json" },
-  });
+//   const res = await fetch(JITO_BUNDLE_ENDPOINT, {
+//     method: "POST",
+//     body: JSON.stringify(payload),
+//     headers: { "Content-Type": "application/json" },
+//   });
 
-  const json = await res.json();
-  if (json.error) {
-    throw new Error(json.error.message);
-  }
+//   const json = await res.json();
+//   if (json.error) {
+//     throw new Error(json.error.message);
+//   }
 
-  return json.result; // Returns the bundle ID
-}
+//   return json.result; // Returns the bundle ID
+// }
 
 // Submit swap request
 const submitSwapRequest = async (swapRequest: SwapRequest): Promise<any> => {
@@ -141,6 +110,26 @@ const compiledInstructionToTransaction = (
   });
 };
 
+// Replace the direct Jito client code with API calls
+const sendBundle = async (serializedTxs: Uint8Array[]) => {
+  const response = await fetch('/api/jito/bundle', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      transactions: serializedTxs.map(tx => Buffer.from(tx).toString('base64'))
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.details || 'Failed to send bundle');
+  }
+
+  return await response.json();
+};
+
 // Hook: useCreateSwapInstructions
 export const useCreateSwapInstructions = (
   publicKey: PublicKey | null,
@@ -168,13 +157,13 @@ export const useCreateSwapInstructions = (
       onSuccess?: () => void
     ) => {
       console.log('handleClosePopup started:', { answer, selectedItems, bundleTip });
-      
+
       if (!answer || selectedItems.size === 0 || !publicKey || !signAllTransactions) {
-        console.log('Early return due to:', { 
-          answer, 
-          itemsSize: selectedItems.size, 
-          hasPublicKey: !!publicKey, 
-          hasSignAllTx: !!signAllTransactions 
+        console.log('Early return due to:', {
+          answer,
+          itemsSize: selectedItems.size,
+          hasPublicKey: !!publicKey,
+          hasSignAllTx: !!signAllTransactions
         });
         return;
       }
@@ -184,12 +173,15 @@ export const useCreateSwapInstructions = (
 
       try {
         console.log('Fetching tip account...');
-        const tipAccount = await getTipAccounts();
+        // const client = jito.searcher.searcherClient(JITO_BUNDLE_ENDPOINT);
+        // const tipAccount = await client.getTipAccounts();
+        const tipAccountResponse = await fetch('/api/jito/getTipAccount');
+        const tipAccount = (await tipAccountResponse.json()).tipAccount.value[0];
         console.log('Tip account received:', tipAccount);
 
         const selectedItemsArray = Array.from(selectedItems);
         console.log('Processing items:', selectedItemsArray);
-        
+
         const serializedTxs: Uint8Array[] = [];
 
         for (const selectedItem of selectedItemsArray) {
@@ -197,7 +189,7 @@ export const useCreateSwapInstructions = (
             console.log('Processing item:', selectedItem);
             const balanceInSmallestUnit = selectedItem.amount * Math.pow(10, selectedItem.decimals);
             console.log('Balance in smallest unit:', balanceInSmallestUnit);
-            
+
             if (balanceInSmallestUnit === 0) {
               console.log('Skipping zero balance item');
               continue;
@@ -235,87 +227,30 @@ export const useCreateSwapInstructions = (
 
             try {
               console.log('Processing swap response...');
-              const { transaction } = swapResponse;
-              console.log('Transaction received:', transaction);
+              const { transaction: jupTransaction } = swapResponse;
 
-              // Get all accounts and lookup tables from the original transaction
-              const message = transaction.message as MessageV0;
-              const lookupTables = await Promise.all(
-                message.addressTableLookups.map(lookup =>
-                  connection.getAddressLookupTable(lookup.accountKey)
-                )
-              );
-              const lookupTableAccounts = lookupTables
-                .map(table => table.value)
-                .filter((account): account is AddressLookupTableAccount => account !== null);
-
-              // Get all accounts for instruction conversion
-              const allAccounts = [
-                ...message.staticAccountKeys,
-                ...lookupTableAccounts.flatMap(table => table.state.addresses)
-              ];
-
-              // Create tip instruction
+              // Create separate tip transaction
+              const { blockhash } = await connection.getLatestBlockhash();
               const tipInstruction = SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(tipAccount),
                 lamports: bundleTip,
               });
 
-              // Create new transaction with original swap instructions plus tip
-              const { blockhash } = await connection.getLatestBlockhash();
-              const swapInstructions = message.compiledInstructions.map(inst => 
-                compiledInstructionToTransaction(inst, message, allAccounts)
-              );
-
-              console.log('Creating transaction with instructions:', {
-                swapInstructionsCount: swapInstructions.length,
-                hasTipInstruction: true
-              });
-
-              const messageV0 = new TransactionMessage({
+              const tipMessage = new TransactionMessage({
                 payerKey: publicKey,
                 recentBlockhash: blockhash,
-                instructions: [...swapInstructions, tipInstruction],
-              }).compileToV0Message(lookupTableAccounts);
+                instructions: [tipInstruction],
+              }).compileToV0Message([]);
 
-              const newTransaction = new VersionedTransaction(messageV0);
+              const tipTransaction = new VersionedTransaction(tipMessage);
 
-              // Simulate the transaction before signing
-              console.log('Simulating transaction...');
-              const simulation = await connection.simulateTransaction(newTransaction);
-              
-              if (simulation.value.err) {
-                console.error('Simulation failed:', {
-                  error: simulation.value.err,
-                  logs: simulation.value.logs,
-                  unitsConsumed: simulation.value.unitsConsumed
-                });
-                
-                // Try using the original transaction from Jupiter without modifications
-                console.log('Attempting simulation with original transaction...');
-                const originalSimulation = await connection.simulateTransaction(transaction);
-                
-                if (originalSimulation.value.err) {
-                  console.error('Original transaction simulation also failed:', originalSimulation.value.err);
-                  throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
-                }
-                
-                // If original works, use it instead
-                console.log('Using original transaction from Jupiter');
-                const signedTransaction = await signAllTransactions([transaction]);
-                signedTransaction.forEach((tx) => serializedTxs.push(tx.serialize()));
-              } else {
-                console.log('Simulation successful:', {
-                  unitsConsumed: simulation.value.unitsConsumed,
-                  logs: simulation.value.logs
-                });
-                
-                const signedTransaction = await signAllTransactions([newTransaction]);
-                signedTransaction.forEach((tx) => serializedTxs.push(tx.serialize()));
-              }
+              // Sign both transactions
+              const signedTransactions = await signAllTransactions([tipTransaction, jupTransaction]);
 
-              console.log('Transaction serialized and added to batch');
+              // Add both transactions to the bundle
+              signedTransactions.forEach((tx) => serializedTxs.push(tx.serialize()));
+              console.log('Transactions serialized and added to bundle');
             } catch (error) {
               console.error('Error processing swap for item:', selectedItem, error);
             }
@@ -326,11 +261,9 @@ export const useCreateSwapInstructions = (
 
         if (serializedTxs.length > 0) {
           console.log('Sending bundle with transactions:', serializedTxs.length);
-          const bundleId = await sendBundleUsingJito(serializedTxs);
+          const { bundleId, bundleStatus } = await sendBundle(serializedTxs);
           console.log('Bundle submitted with ID:', bundleId);
-          setMessage(`Bundle submitted with ID: ${bundleId}`);
-          toast.success(`Bundle submitted successfully`);
-          if (onSuccess) onSuccess();
+          setMessage(`Bundle Status: ${bundleStatus}`)
         } else {
           throw new Error("No valid transactions to bundle.");
         }

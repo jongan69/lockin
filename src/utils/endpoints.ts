@@ -9,7 +9,7 @@ export const METAPLEX = "https://api.metaplex.solana.com";
 export const SERUM = "https://solana-api.projectserum.com";
 export const HELIUS = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
 
-export const BLOCKENGINE = `mainnet.block-engine.jito.wtf`
+export const BLOCKENGINE_URL = `amsterdam.mainnet.block-engine.jito.wtf`
 
 // You can use any of the other enpoints here
 export const NETWORK = HELIUS ?? SOLANA_MAIN;

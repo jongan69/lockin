@@ -19,6 +19,11 @@ const ReactUIWalletModalProviderDynamic = dynamic(
   { ssr: false }
 );
 
+if (typeof window !== 'undefined') {
+  window.Buffer = window.Buffer || require('buffer').Buffer;
+  window.process = window.process || require('process');
+}
+
 function MyApp({ Component, pageProps }: AppProps) {
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
