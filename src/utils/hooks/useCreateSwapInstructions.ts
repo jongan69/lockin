@@ -291,7 +291,7 @@ export const useCreateSwapInstructions = (
                     }
                 }
 
-                toast.success(`Bundle ${i + 1}/${bundleChunks.length} - ID: ${bundleId} (${finalStatus})`);
+                toast.success(`Bundle ${i + 1}/${bundleChunks.length} - ID: ${bundleId}`);
 
                 // Wait between bundles
                 if (i < bundleChunks.length - 1) {
