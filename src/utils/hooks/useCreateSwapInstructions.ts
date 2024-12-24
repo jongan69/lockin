@@ -1,21 +1,16 @@
 import {
   Connection,
   PublicKey,
-  TransactionInstruction,
   VersionedTransaction,
   SystemProgram,
   TransactionMessage,
   MessageV0,
-  MessageCompiledInstruction,
-  AddressLookupTableAccount,
-  MessageAddressTableLookup,
 } from "@solana/web3.js";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { createJupiterApiClient, QuoteGetRequest, SwapRequest } from "@jup-ag/api";
 import { toast } from "react-hot-toast";
 import { LOCKIN_MINT, REFER_PROGRAM_ID } from "@utils/globals";
 import { fetchQuoteWithRetries } from "@utils/fetchQuote";
-import bs58 from "bs58";
 
 // Constants
 const PLATFORM_FEE_BPS = 10;
@@ -37,29 +32,6 @@ export async function getFeeAccount(
   );
   return feeAccount;
 }
-
-// Send a bundle using Jito
-// export async function sendBundleUsingJito(serializedTxs: Uint8Array[]): Promise<string> {
-//   const payload = {
-//     jsonrpc: "2.0",
-//     id: 1,
-//     method: "sendBundle",
-//     params: [serializedTxs.map((tx) => bs58.encode(tx))],
-//   };
-
-//   const res = await fetch(JITO_BUNDLE_ENDPOINT, {
-//     method: "POST",
-//     body: JSON.stringify(payload),
-//     headers: { "Content-Type": "application/json" },
-//   });
-
-//   const json = await res.json();
-//   if (json.error) {
-//     throw new Error(json.error.message);
-//   }
-
-//   return json.result; // Returns the bundle ID
-// }
 
 // Submit swap request
 const submitSwapRequest = async (swapRequest: SwapRequest): Promise<any> => {
@@ -84,32 +56,6 @@ const submitSwapRequest = async (swapRequest: SwapRequest): Promise<any> => {
     lastValidBlockHeight: json.lastValidBlockHeight,
     computeUnitLimit: json.computeUnitLimit
   };
-};
-
-// Create transactions from chunk
-
-// Add this helper function
-const compiledInstructionToTransaction = (
-  instruction: MessageCompiledInstruction,
-  message: MessageV0,
-  allAccounts: PublicKey[]
-): TransactionInstruction => {
-  // Get the original account metadata from the message
-  const accountMetadata = instruction.accountKeyIndexes.map(idx => {
-    const isWritable = message.isAccountWritable(idx);
-    const isSigner = message.isAccountSigner(idx);
-    return {
-      pubkey: allAccounts[idx],
-      isSigner,
-      isWritable
-    };
-  });
-
-  return new TransactionInstruction({
-    programId: allAccounts[instruction.programIdIndex],
-    keys: accountMetadata,
-    data: Buffer.from(instruction.data)
-  });
 };
 
 // Add this helper function to chunk transactions
@@ -143,22 +89,6 @@ const sendBundle = async (serializedTxs: Uint8Array[]) => {
     bundleId: json.bundleId,
     status: json.status 
   };
-};
-
-// Add this near the top with other helper functions
-const getLookupTableAccounts = async (
-  connection: Connection,
-  lookups: MessageAddressTableLookup[]
-): Promise<AddressLookupTableAccount[]> => {
-  return Promise.all(
-    lookups.map(async (lookup) => {
-      const account = await connection.getAddressLookupTable(lookup.accountKey);
-      if (!account.value) {
-        throw new Error(`Lookup table ${lookup.accountKey.toString()} not found`);
-      }
-      return account.value;
-    })
-  );
 };
 
 // Add this function to check bundle status
@@ -214,8 +144,6 @@ export const useCreateSwapInstructions = (
 
       try {
         console.log('Fetching tip account...');
-        // const client = jito.searcher.searcherClient(JITO_BUNDLE_ENDPOINT);
-        // const tipAccount = await client.getTipAccounts();
         const tipAccountResponse = await fetch('/api/jito/getTipAccount');
         const tipAccount = (await tipAccountResponse.json()).tipAccount.value[0];
         console.log('Tip account received:', tipAccount);
@@ -288,7 +216,7 @@ export const useCreateSwapInstructions = (
             for (let i = 0; i < bundleChunks.length; i++) {
               try {
                 // Get a fresh blockhash for each bundle
-                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+                const { blockhash } = await connection.getLatestBlockhash('confirmed');
                 console.log(`Bundle ${i + 1} using blockhash:`, blockhash);
 
                 // Create tip transaction with the fresh blockhash
