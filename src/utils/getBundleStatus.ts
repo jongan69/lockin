@@ -18,7 +18,7 @@ export type bundleStatus = {
   }
 
   export async function getBundleStatus(id: string): Promise<bundleStatus> {
-    let endpoint = `${BLOCKENGINE_URL}/api/v1/bundles`;
+    let endpoint = `https://${BLOCKENGINE_URL}/api/v1/bundles`;
 
     let payload = {
       jsonrpc: "2.0",

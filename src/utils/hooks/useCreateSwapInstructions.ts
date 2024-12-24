@@ -8,6 +8,7 @@ import {
   MessageV0,
   MessageCompiledInstruction,
   AddressLookupTableAccount,
+  MessageAddressTableLookup,
 } from "@solana/web3.js";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { createJupiterApiClient, QuoteGetRequest, SwapRequest } from "@jup-ag/api";
@@ -18,11 +19,12 @@ import bs58 from "bs58";
 
 // Constants
 const PLATFORM_FEE_BPS = 10;
+const MAX_TRANSACTIONS_PER_BUNDLE = 5;
 
 // Helper Functions
 
 // Sleep utility
-// const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Derive Fee Account
 export async function getFeeAccount(
@@ -110,7 +112,16 @@ const compiledInstructionToTransaction = (
   });
 };
 
-// Replace the direct Jito client code with API calls
+// Add this helper function to chunk transactions
+const chunkTransactions = (txs: Uint8Array[], size: number): Uint8Array[][] => {
+  const chunks: Uint8Array[][] = [];
+  for (let i = 0; i < txs.length; i += size) {
+    chunks.push(txs.slice(i, i + size));
+  }
+  return chunks;
+};
+
+// Update the sendBundle function
 const sendBundle = async (serializedTxs: Uint8Array[]) => {
   const response = await fetch('/api/jito/bundle', {
     method: 'POST',
@@ -126,8 +137,38 @@ const sendBundle = async (serializedTxs: Uint8Array[]) => {
     const error = await response.json();
     throw new Error(error.details || 'Failed to send bundle');
   }
+  const json = await response.json();
+  console.log('Bundle response:', json);
+  return { 
+    bundleId: json.bundleId,
+    status: json.status 
+  };
+};
 
-  return await response.json();
+// Add this near the top with other helper functions
+const getLookupTableAccounts = async (
+  connection: Connection,
+  lookups: MessageAddressTableLookup[]
+): Promise<AddressLookupTableAccount[]> => {
+  return Promise.all(
+    lookups.map(async (lookup) => {
+      const account = await connection.getAddressLookupTable(lookup.accountKey);
+      if (!account.value) {
+        throw new Error(`Lookup table ${lookup.accountKey.toString()} not found`);
+      }
+      return account.value;
+    })
+  );
+};
+
+// Add this function to check bundle status
+const checkBundleStatus = async (bundleId: string): Promise<string> => {
+    const response = await fetch(`/api/jito/status?bundleId=${bundleId}`);
+    if (!response.ok) {
+        throw new Error('Failed to check bundle status');
+    }
+    const data = await response.json();
+    return data.status;
 };
 
 // Hook: useCreateSwapInstructions
@@ -182,7 +223,7 @@ export const useCreateSwapInstructions = (
         const selectedItemsArray = Array.from(selectedItems);
         console.log('Processing items:', selectedItemsArray);
 
-        const serializedTxs: Uint8Array[] = [];
+        const serializedSwapTxs: Uint8Array[] = [];
 
         for (const selectedItem of selectedItemsArray) {
           try {
@@ -228,29 +269,9 @@ export const useCreateSwapInstructions = (
             try {
               console.log('Processing swap response...');
               const { transaction: jupTransaction } = swapResponse;
-
-              // Create separate tip transaction
-              const { blockhash } = await connection.getLatestBlockhash();
-              const tipInstruction = SystemProgram.transfer({
-                fromPubkey: publicKey,
-                toPubkey: new PublicKey(tipAccount),
-                lamports: bundleTip,
-              });
-
-              const tipMessage = new TransactionMessage({
-                payerKey: publicKey,
-                recentBlockhash: blockhash,
-                instructions: [tipInstruction],
-              }).compileToV0Message([]);
-
-              const tipTransaction = new VersionedTransaction(tipMessage);
-
-              // Sign both transactions
-              const signedTransactions = await signAllTransactions([tipTransaction, jupTransaction]);
-
-              // Add both transactions to the bundle
-              signedTransactions.forEach((tx) => serializedTxs.push(tx.serialize()));
-              console.log('Transactions serialized and added to bundle');
+              // Just store the unserialized transaction
+              serializedSwapTxs.push(jupTransaction.serialize());
+              console.log('Swap transaction added to bundle');
             } catch (error) {
               console.error('Error processing swap for item:', selectedItem, error);
             }
@@ -259,13 +280,114 @@ export const useCreateSwapInstructions = (
           }
         }
 
-        if (serializedTxs.length > 0) {
-          console.log('Sending bundle with transactions:', serializedTxs.length);
-          const { bundleId, bundleStatus } = await sendBundle(serializedTxs);
-          console.log('Bundle submitted with ID:', bundleId);
-          setMessage(`Bundle Status: ${bundleStatus}`)
+        if (serializedSwapTxs.length > 0) {
+          try {
+            const bundleChunks = chunkTransactions(serializedSwapTxs, MAX_TRANSACTIONS_PER_BUNDLE - 1);
+            console.log(`Split into ${bundleChunks.length} bundles`);
+
+            for (let i = 0; i < bundleChunks.length; i++) {
+              try {
+                // Get a fresh blockhash for each bundle
+                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+                console.log(`Bundle ${i + 1} using blockhash:`, blockhash);
+
+                // Create tip transaction with the fresh blockhash
+                const tipInstruction = SystemProgram.transfer({
+                  fromPubkey: publicKey,
+                  toPubkey: new PublicKey(tipAccount),
+                  lamports: bundleTip,
+                });
+
+                const tipMessage = new TransactionMessage({
+                  payerKey: publicKey,
+                  recentBlockhash: blockhash,
+                  instructions: [tipInstruction],
+                }).compileToV0Message([]);
+
+                const tipTransaction = new VersionedTransaction(tipMessage);
+                
+                // Update the blockhash for each swap transaction in this chunk
+                const updatedSwapTxs = await Promise.all(
+                  bundleChunks[i].map(async (serializedTx) => {
+                    const tx = VersionedTransaction.deserialize(serializedTx);
+                    const message = tx.message as MessageV0;
+                    
+                    // Just update the blockhash without signing
+                    const newTx = new VersionedTransaction(
+                      new MessageV0({
+                        header: message.header,
+                        staticAccountKeys: message.staticAccountKeys,
+                        recentBlockhash: blockhash,
+                        compiledInstructions: message.compiledInstructions,
+                        addressTableLookups: message.addressTableLookups
+                      })
+                    );
+                    return newTx; // Return unsigned transaction
+                  })
+                );
+
+                // Sign all transactions at once
+                const allTxsToSign = [tipTransaction, ...updatedSwapTxs];
+                let signedTxs;
+                try {
+                  signedTxs = await signAllTransactions(allTxsToSign);
+                } catch (error: any) {
+                  if (error.message.includes('rejected')) {
+                    toast.error('Transaction signing cancelled by user');
+                    setMessage(null);
+                    setSending(false);
+                    return; // Exit early
+                  }
+                  throw error; // Re-throw other errors
+                }
+
+                // Serialize all signed transactions
+                const bundleTxs = signedTxs.map(tx => tx.serialize());
+                
+                setMessage(`Sending bundle ${i + 1} of ${bundleChunks.length}...`);
+                const { bundleId, status } = await sendBundle(bundleTxs);
+                if (!bundleId) throw new Error('No bundle ID received');
+                console.log(`Bundle ${i + 1} submitted with ID:`, bundleId);
+
+                // Poll for status a few times
+                let finalStatus = status;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    await sleep(10000); // Wait 10 seconds between checks
+                    try {
+                        finalStatus = await checkBundleStatus(bundleId);
+                        if (finalStatus === 'accepted' || finalStatus === 'finalized') {
+                            break;
+                        }
+                    } catch (error) {
+                        console.error('Status check error:', error);
+                    }
+                }
+
+                toast.success(`Bundle ${i + 1}/${bundleChunks.length} - ID: ${bundleId} (${finalStatus})`);
+
+                // Wait between bundles
+                if (i < bundleChunks.length - 1) {
+                  await sleep(2000); // Increased delay between bundles
+                }
+              } catch (error) {
+                console.error(`Error processing bundle ${i + 1}:`, error);
+                throw error; // Re-throw to be caught by outer try-catch
+              }
+            }
+
+            setMessage(`All bundles sent successfully. Refreshing in 3 seconds...`);
+            await sleep(3000);
+            setSending(false);
+            onSuccess?.();
+            pendingTransactions.current.clear();
+          } catch (error: any) {
+            console.error("Bundle error:", error);
+            setErrorMessage(typeof error === 'string' ? error : error.message || 'Unknown error');
+            toast.error(`Failed to send bundles: ${error.message || 'Unknown error'}`);
+            setSending(false);
+          }
         } else {
-          throw new Error("No valid transactions to bundle.");
+          toast.error("Error: No valid transactions to bundle.");
         }
       } catch (error: any) {
         console.error("Swap error:", error);

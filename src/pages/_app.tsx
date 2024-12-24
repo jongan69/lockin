@@ -12,7 +12,7 @@ import { Toaster } from "react-hot-toast";
 
 const endpoint = HELIUS!;
 
-console.log("endpoint", endpoint);
+// console.log("endpoint", endpoint);
 const ReactUIWalletModalProviderDynamic = dynamic(
   async () =>
     (await import("@solana/wallet-adapter-react-ui")).WalletModalProvider,

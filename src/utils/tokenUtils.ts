@@ -15,11 +15,11 @@ const ENDPOINT = NETWORK;
 
 // Add validation for the endpoint URL
 if (!ENDPOINT || (!ENDPOINT.startsWith('http:') && !ENDPOINT.startsWith('https:'))) {
-  console.log(`ENDPOINT: ${ENDPOINT}`);
+  // console.log(`ENDPOINT: ${ENDPOINT}`);
   throw new Error('Invalid RPC endpoint URL. Must start with http: or https:');
 }
 
-console.log(`ENDPOINT: ${ENDPOINT}`);
+// console.log(`ENDPOINT: ${ENDPOINT}`);
 const connection = new Connection(ENDPOINT);
 const metaplex = Metaplex.make(connection);
 const DEFAULT_IMAGE_URL = process.env.UNKNOWN_IMAGE_URL || "https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png";
@@ -122,47 +122,37 @@ export async function fetchTokenMetadata(mintAddress: PublicKey, mint: string) {
       rpcLimiter.schedule(() => connection.getAccountInfo(metadataAccount))
     );
 
-    if (metadataAccountInfo) {
-      const token = await withRetry(() =>
-        rpcLimiter.schedule(() => metaplex.nfts().findByMint({ mintAddress: mintAddress }))
-      );
+    if (!metadataAccountInfo) {
+      return getDefaultTokenMetadata(mint);
+    }
 
-      const cid = extractCidFromUrl(token.uri);
-      console.log(cid ? `CID found: ${cid}` : `No CID, Using ${token.json?.image ?? DEFAULT_IMAGE_URL}`);
-      let metadata = {
-        name: token?.name,
-        symbol: token?.symbol,
-        logo: token.json?.image ?? DEFAULT_IMAGE_URL,
-        cid,
-        collectionName: token?.name,
-        collectionLogo: token.json?.image ?? DEFAULT_IMAGE_URL,
-        isNft: false
-      };
+    const token = await withRetry(() =>
+      rpcLimiter.schedule(() => metaplex.nfts().findByMint({ mintAddress: mintAddress }))
+    );
 
-      if (cid) {
-        const newMetadata = await apiLimiter.schedule(() =>
-          fetchIpfsMetadata(cid)
-        );
-        metadata.logo = newMetadata.imageUrl ?? token.json?.image;
-      }
+    let metadata = await processTokenMetadata(token, mint);
 
-      // Check if the token is part of a collection (NFT)
-      if (token.collection) {
+    // Handle collection metadata separately to prevent failures
+    if (token.collection) {
+      try {
         const collectionMetadata = await fetchCollectionMetadata(token.collection.address);
-        // console.log(`Collection metadata: ${JSON.stringify(collectionMetadata)}`);
         metadata = {
           ...metadata,
-          collectionName: collectionMetadata?.name ?? token?.name,
-          collectionLogo: collectionMetadata?.logo ?? token.json?.image,
+          collectionName: collectionMetadata?.name ?? metadata.name,
+          collectionLogo: collectionMetadata?.logo ?? metadata.logo,
           isNft: true
         };
+      } catch (collectionError) {
+        console.warn(`Failed to fetch collection metadata for token ${mint}:`, collectionError);
+        // Keep existing metadata if collection fetch fails
       }
-
-      return metadata;
     }
+
+    return metadata;
+
   } catch (error) {
-    console.error("Error fetching token metadata for:", mint, error);
-    return { name: mint, symbol: mint, logo: DEFAULT_IMAGE_URL, cid: null, collectionName: mint, collectionLogo: DEFAULT_IMAGE_URL, isNft: false };
+    console.warn("Error fetching token metadata for:", mint, error);
+    return getDefaultTokenMetadata(mint);
   }
 }
 
@@ -173,47 +163,113 @@ async function fetchCollectionMetadata(collectionAddress: PublicKey) {
       .pdas()
       .metadata({ mint: collectionAddress });
 
-    const metadataAccountInfo = await rpcLimiter.schedule(() =>
-      connection.getAccountInfo(metadataAccount)
+    // Wrap RPC calls with withRetry and rpcLimiter
+    const metadataAccountInfo = await withRetry(() =>
+      rpcLimiter.schedule(() =>
+        connection.getAccountInfo(metadataAccount)
+      )
     );
 
-    if (metadataAccountInfo) {
-      const collection = await rpcLimiter.schedule(() =>
-        metaplex.nfts().findByMint({ mintAddress: collectionAddress })
-      );
+    if (!metadataAccountInfo) {
+      console.log(`No metadata account found for collection: ${collectionAddress.toString()}`);
+      return getDefaultMetadata();
+    }
 
-      const cid = extractCidFromUrl(collection.uri);
-      if (cid) {
+    const collection = await withRetry(() =>
+      rpcLimiter.schedule(() =>
+        metaplex.nfts().findByMint({ mintAddress: collectionAddress })
+      )
+    );
+
+    const cid = extractCidFromUrl(collection.uri);
+    if (cid) {
+      try {
         const collectionMetadata = await apiLimiter.schedule(() =>
           fetchIpfsMetadata(cid)
         );
         return {
-          name: collection.name,
-          symbol: collection.symbol,
-          logo: collectionMetadata.imageUrl ?? DEFAULT_IMAGE_URL,
+          name: collection.name || "Unknown Collection",
+          symbol: collection.symbol || "UNKNOWN",
+          logo: collectionMetadata.imageUrl ?? collection.json?.image ?? DEFAULT_IMAGE_URL,
           cid: cid,
-          isNft: collectionMetadata?.name ? true : false
+          isNft: true
         };
-      } else {
+      } catch (ipfsError) {
+        console.warn(`Failed to fetch IPFS metadata for collection ${collectionAddress.toString()}:`, ipfsError);
         return {
-          name: collection.name,
-          symbol: collection.symbol,
+          name: collection.name || "Unknown Collection",
+          symbol: collection.symbol || "UNKNOWN",
           logo: collection.json?.image ?? DEFAULT_IMAGE_URL,
-          cid: null,
+          cid: cid,
           isNft: true
         };
       }
     }
-  } catch (error) {
-    console.error("Error fetching collection metadata:", error);
+
     return {
-      name: "Unknown",
-      symbol: "Unknown",
-      logo: DEFAULT_IMAGE_URL,
+      name: collection.name || "Unknown Collection",
+      symbol: collection.symbol || "UNKNOWN",
+      logo: collection.json?.image ?? DEFAULT_IMAGE_URL,
       cid: null,
-      isNft: false
+      isNft: true
     };
+
+  } catch (error) {
+    console.warn("Error fetching collection metadata for address:", collectionAddress.toString(), error);
+    return getDefaultMetadata();
   }
+}
+
+// Add a helper function to return default metadata
+function getDefaultMetadata() {
+  return {
+    name: "Unknown Collection",
+    symbol: "UNKNOWN",
+    logo: DEFAULT_IMAGE_URL,
+    cid: null,
+    isNft: true
+  };
+}
+
+// Helper function to get default token metadata
+function getDefaultTokenMetadata(mint: string) {
+  return {
+    name: mint,
+    symbol: mint,
+    logo: DEFAULT_IMAGE_URL,
+    cid: null,
+    collectionName: mint,
+    collectionLogo: DEFAULT_IMAGE_URL,
+    isNft: false
+  };
+}
+
+// Helper function to process token metadata
+async function processTokenMetadata(token: any, mint: string) {
+  const cid = extractCidFromUrl(token.uri);
+  let metadata = {
+    name: token?.name || mint,
+    symbol: token?.symbol || mint,
+    logo: token.json?.image ?? DEFAULT_IMAGE_URL,
+    cid,
+    collectionName: token?.name || mint,
+    collectionLogo: token.json?.image ?? DEFAULT_IMAGE_URL,
+    isNft: false
+  };
+
+  if (cid) {
+    try {
+      const newMetadata = await apiLimiter.schedule(() =>
+        fetchIpfsMetadata(cid)
+      );
+      metadata.logo = newMetadata.imageUrl ?? token.json?.image ?? DEFAULT_IMAGE_URL;
+    } catch (ipfsError) {
+      console.warn(`Failed to fetch IPFS metadata for token ${mint}:`, ipfsError);
+      // Keep existing metadata if IPFS fetch fails
+    }
+  }
+
+  return metadata;
 }
 
 export async function fetchTokenAccounts(publicKey: PublicKey) {
