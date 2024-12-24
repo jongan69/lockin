@@ -1,13 +1,13 @@
 import { Item } from "@components/home/item"; // Import the Item component
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"; // Import hooks for Solana wallet and connection
-import { PublicKey, TransactionInstruction } from "@solana/web3.js"; // Import PublicKey and TransactionInstruction from Solana web3.js
+import { PublicKey, VersionedTransaction } from "@solana/web3.js"; // Import PublicKey and TransactionInstruction from Solana web3.js
 import React, { useState, useEffect } from "react"; // Import React and necessary hooks
 import { toast } from "react-hot-toast"; // Import toast for notifications
-import { LOCKIN_MINT, DEFAULT_WALLET, REFER_PROGRAM_ID, REFERAL_WALLET } from "@utils/globals"; // Import global constants
-import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
+import { LOCKIN_MINT, REFERAL_WALLET } from "@utils/globals"; // Import global constants
+// import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
-import { useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
+import { TokenItem, useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
 
 type Props = {
   initialItems: Array<TokenData>; // Define prop type for initial items
@@ -15,14 +15,14 @@ type Props = {
 };
 
 export const ItemList = ({ initialItems, totalValue }: Props) => {
-  const { publicKey, sendTransaction, signAllTransactions } = useWallet(); // Get wallet details from useWallet hook
+  const { publicKey, signAllTransactions } = useWallet(); // Get wallet details from useWallet hook
   const { connection } = useConnection(); // Get connection from useConnection hook
-  const { closeTokenAccount, closeTokenAccountsAndSendTransaction } = useCloseTokenAccount(); // Get closeTokenAccount function from useCloseTokenAccount hook
+  const { closeTokenAccountsAndSendTransaction } = useCloseTokenAccount(); // Get closeTokenAccount function from useCloseTokenAccount hook
 
   const [items] = useState<TokenData[]>(initialItems); // Initialize items state
   const [sortedItems, setSortedItems] = useState<TokenData[]>(initialItems); // Initialize sorted items state
   const [selectedItems, setSelectedItems] = useState<Set<TokenData>>(new Set()); // Initialize selected items state
-  const [closedTokenAccounts, setClosedTokenAccounts] = useState(new Set()); // Initialize closed token accounts state
+  const [closedTokenAccounts] = useState(new Set()); // Initialize closed token accounts state
   const [closableTokenAccounts, setClosableTokenAccounts] = useState(initialItems); // Initialize closable token accounts state
   const [nfts, setNfts] = useState(initialItems); // Initialize NFTs state
   const [tipAmount, setTipAmount] = useState(1000); // Initialize tip amount state
@@ -30,29 +30,32 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
-  const [message, setMessage] = useState(''); // State for general message
+  const [message, setMessage] = useState<string | null>(null); // Allow null
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
   const targetTokenMintAddress = LOCKIN_MINT; // Target token mint address
-  const dustReceiver = new PublicKey(DEFAULT_WALLET); // Dust receiver public key
+  // const dustReceiver = new PublicKey(DEFAULT_WALLET); // Dust receiver public key
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET); // Referral account public key
-  const referralProgramId = REFER_PROGRAM_ID; // Referral program ID
+  // const referralProgramId = REFER_PROGRAM_ID; // Referral program ID
 
-  const { sendTransactionBatch, sending: sendingBatch } = useSendBatchTransaction();
+  // const { sending: sendingBatch } = useSendBatchTransaction();
+
+  const safeSignAllTransactions = signAllTransactions || (async (txs: VersionedTransaction[]) => txs);
 
   const { handleClosePopup, sending } = useCreateSwapInstructions(
     publicKey,
     connection,
-    signAllTransactions,
-    targetTokenMintAddress,
-    dustReceiver,
-    maxBps,
-    referralAccountPubkey,
-    referralProgramId,
-    tipAmount, // Use the state variable instead of the hardcoded value
-    setShowPopup,
-    setSelectedItems,
-    setClosedTokenAccounts
+    safeSignAllTransactions,
+    setMessage,
+    referralAccountPubkey
   );
+
+  const convertToTokenItem = (data: TokenData): TokenItem => ({
+    symbol: data.symbol ?? "Unknown",
+    mintAddress: data.mintAddress,
+    amount: data.amount,
+    decimals: data.decimals,
+    tokenAddress: data.tokenAddress,
+  });
 
   const handleItemClick = (item: TokenData) => {
     if (item.isNft && item.amount > 0) {
@@ -91,10 +94,11 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   const handleConfirmSelection = () => {
     if (selectedItems.size > 0) {
-      setShowPopup(true); // Show confirmation popup
-      setErrorMessage(null); // Reset error message
+      const tokenItems = new Set(Array.from(selectedItems).map(convertToTokenItem));
+      setShowPopup(true);
+      setErrorMessage(null);
     } else {
-      toast.error("Please select at least one item."); // Show error toast
+      toast.error("Please select at least one item.");
     }
   };
 
@@ -180,7 +184,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
         />
       </div>
-      
+
       <h1 className="text-center text-primary m-10">Swappable Tokens</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.length === 0 || !sortedItems ? (
@@ -260,19 +264,23 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
             <div className="flex justify-around mt-4">
               <button
                 onClick={() => handleClosePopup(
-                  true, 
-                  selectedItems, 
-                  setMessage, 
+                  true,
+                  new Set(Array.from(selectedItems).map(convertToTokenItem)),
                   setErrorMessage,
-                  handleSwapComplete // Pass the callback
+                  tipAmount,
+                  handleSwapComplete
                 )}
-                disabled={sendingBatch}
+                // disabled={sendingBatch}
               >
-                {sendingBatch || sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
+                {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
               </button>
               <button
-                onClick={() => handleClosePopup(false, selectedItems, setMessage, setErrorMessage)}
-                disabled={sendingBatch}
+                onClick={() => handleClosePopup(
+                  false,
+                  new Set(Array.from(selectedItems).map(convertToTokenItem)),
+                  setErrorMessage,
+                  tipAmount
+                )}
               >
                 No
               </button>

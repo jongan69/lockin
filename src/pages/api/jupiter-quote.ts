@@ -2,9 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const searchParams = new URLSearchParams(req.body);
+    // Convert request body to URLSearchParams
+    const params = new URLSearchParams();
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
+
     const response = await fetch(
-      `https://quote-api.jup.ag/v6/quote?${searchParams.toString()}`,
+      `https://quote-api.jup.ag/v6/quote?${params.toString()}`,
       {
         method: 'GET',
         headers: {

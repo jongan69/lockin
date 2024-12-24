@@ -1010,7 +1010,7 @@
     pirates "^4.0.6"
     source-map-support "^0.5.16"
 
-"@babel/runtime@^7.10.5", "@babel/runtime@^7.12.5", "@babel/runtime@^7.21.0", "@babel/runtime@^7.24.8", "@babel/runtime@^7.25.0", "@babel/runtime@^7.8.4", "@babel/runtime@^7.x", "@babel/runtime@7.x":
+"@babel/runtime@^7.10.5", "@babel/runtime@^7.12.5", "@babel/runtime@^7.17.2", "@babel/runtime@^7.21.0", "@babel/runtime@^7.24.8", "@babel/runtime@^7.25.0", "@babel/runtime@^7.8.4", "@babel/runtime@^7.x", "@babel/runtime@7.x":
   version "7.26.0"
   resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.26.0.tgz"
   integrity sha512-FDSOghenHTiToteC/QRlv2q3DhPZ/oOXTBoirfWNx1Cx3TMVcGWQtMMmQcSvb/JjpNeGzx8Pq/b4fKEJuWm1sw==
@@ -8571,10 +8571,10 @@ jiti@^1.21.0:
   resolved "https://registry.npmjs.org/jiti/-/jiti-1.21.6.tgz"
   integrity sha512-2yTgeWTWzMWkHu6Jp9NKgePDaYHbntiwvYuuJLbbN9vl7DC9DvXKOB2BC3ZZ92D3cvV/aflH0osDfwpHepQ53w==
 
-jito-ts@^4.1.1:
-  version "4.1.1"
-  resolved "https://registry.npmjs.org/jito-ts/-/jito-ts-4.1.1.tgz"
-  integrity sha512-5a/z7AvtitpExcyxYh1RhPoWRfCA4IPopE5hM5Cxw7/zHnV+VBNZL0m4t3fjfPgMnmPkeoTx2xTw+mSD4PDG7w==
+jito-ts@^4.2.0:
+  version "4.2.0"
+  resolved "https://registry.npmjs.org/jito-ts/-/jito-ts-4.2.0.tgz"
+  integrity sha512-on2QaZ+6H/LgHiQgC7bz0b0Pm3UdPK2wEroX4eDMXAPDPL1C1pJyyXqyJFZ84SL+JX0ESc18zC7jaelI2IYpAQ==
   dependencies:
     "@grpc/grpc-js" "^1.8.13"
     "@noble/ed25519" "^1.7.1"
@@ -8585,6 +8585,7 @@ jito-ts@^4.1.1:
     dotenv "^16.0.3"
     jayson "^4.0.0"
     node-fetch "^2.6.7"
+    rpc-websockets "7.10.0"
     superstruct "^1.0.3"
 
 js-base64@^3.7.5:
@@ -10991,11 +10992,12 @@ ripple-lib@^1.10.1:
     ripple-lib-transactionparser "0.8.2"
     ws "^7.2.0"
 
-rpc-websockets@^7.5.1:
-  version "7.11.2"
-  resolved "https://registry.npmjs.org/rpc-websockets/-/rpc-websockets-7.11.2.tgz"
-  integrity sha512-pL9r5N6AVHlMN/vT98+fcO+5+/UcPLf/4tq+WUaid/PPUGS/ttJ3y8e9IqmaWKtShNAysMSjkczuEA49NuV7UQ==
+rpc-websockets@^7.5.1, rpc-websockets@7.10.0:
+  version "7.10.0"
+  resolved "https://registry.npmjs.org/rpc-websockets/-/rpc-websockets-7.10.0.tgz"
+  integrity sha512-cemZ6RiDtYZpPiBzYijdOrkQQzmBCmug0E9SdRH2gIUNT15ql4mwCYWIp0VnSZq6Qrw/JkGUygp4PrK1y9KfwQ==
   dependencies:
+    "@babel/runtime" "^7.17.2"
     eventemitter3 "^4.0.7"
     uuid "^8.3.2"
     ws "^8.5.0"

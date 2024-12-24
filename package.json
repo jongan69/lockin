@@ -33,7 +33,7 @@
     "classnames": "^2.3.2",
     "daisyui": "^2.46.1",
     "fs": "^0.0.1-security",
-    "jito-ts": "^4.1.1",
+    "jito-ts": "^4.2.0",
     "next": "15.1.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",

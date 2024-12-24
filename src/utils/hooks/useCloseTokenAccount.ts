@@ -7,11 +7,8 @@ import {
 } from "@solana/web3.js";
 import { createCloseAccountInstruction } from "@solana/spl-token";
 import { toast } from "react-hot-toast";
-import { getTipAccounts, sendTxUsingJito, waitForBundleConfirmation } from "@utils/hooks/useCreateSwapInstructions";
-import { SystemProgram } from "@solana/web3.js";
 
 const MAX_ACCOUNTS_PER_TX = 12; // Conservative limit for accounts per transaction
-const BUNDLE_TIP = 1000; // Tip amount for Jito bundles
 const USER_REJECTION_ERROR = 'User rejected the request';
 
 export const useCloseTokenAccount = () => {
@@ -57,8 +54,7 @@ export const useCloseTokenAccount = () => {
 
     try {
       setMessage?.("Preparing to close token accounts...");
-      const tipAccount = await getTipAccounts();
-
+      
       // Split token accounts into chunks
       const chunks: PublicKey[][] = [];
       for (let i = 0; i < tokenAccounts.length; i += MAX_ACCOUNTS_PER_TX) {
@@ -76,16 +72,10 @@ export const useCloseTokenAccount = () => {
           chunk.map(account => closeTokenAccount(account))
         );
 
-        const tipInstruction = SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: new PublicKey(tipAccount),
-          lamports: BUNDLE_TIP,
-        });
-
         const messageV0 = new TransactionMessage({
           payerKey: publicKey,
           recentBlockhash: blockhash,
-          instructions: [...instructions, tipInstruction],
+          instructions: instructions,
         }).compileToV0Message();
 
         transactions.push(new VersionedTransaction(messageV0));
@@ -97,17 +87,19 @@ export const useCloseTokenAccount = () => {
         // Sign all transactions at once
         const signedTransactions = await signAllTransactions(transactions);
 
-        // Send transactions as Jito bundles
+        // Send transactions sequentially
         for (let i = 0; i < signedTransactions.length; i++) {
           setMessage?.(`Processing chunk ${i + 1}/${signedTransactions.length}...`);
           const signedTx = signedTransactions[i];
-          const serializedTx = signedTx.serialize();
-          const bundleId = await sendTxUsingJito([serializedTx]);
+          
+          setMessage?.(`Sending chunk ${i + 1}...`);
+          const signature = await connection.sendTransaction(signedTx);
           
           setMessage?.(`Confirming chunk ${i + 1}...`);
-          const confirmed = await waitForBundleConfirmation(bundleId);
-          if (!confirmed) {
-            throw new Error(`Bundle ${bundleId} failed to confirm`);
+          const confirmation = await connection.confirmTransaction(signature);
+          
+          if (confirmation.value.err) {
+            throw new Error(`Transaction ${signature} failed to confirm`);
           }
         }
 

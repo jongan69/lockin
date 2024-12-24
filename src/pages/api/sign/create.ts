@@ -1,15 +1,9 @@
 import {
-  Connection,
-  Keypair,
-  PublicKey,
   VersionedTransaction
 } from "@solana/web3.js";
 import { NextApiRequest, NextApiResponse } from "next";
 import { NETWORK } from "@utils/endpoints";
-// import { MEMO_PROGRAM_ID, NONCE } from "@utils/globals";
 import fetch from 'cross-fetch';
-import { Wallet } from '@project-serum/anchor';
-import bs58 from 'bs58';
 
 if (!NETWORK) {
   throw new Error("NETWORK is required");
