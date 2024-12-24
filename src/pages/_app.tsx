@@ -5,10 +5,10 @@ import { ConnectionProvider } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import ClientWalletProvider from "@components/contexts/ClientWalletProvider";
 import { HELIUS } from "@utils/endpoints";
+import { Toaster } from "react-hot-toast";
 
 import "../styles/globals.css";
 import "../styles/App.css";
-import { Toaster } from "react-hot-toast";
 
 const endpoint = HELIUS!;
 

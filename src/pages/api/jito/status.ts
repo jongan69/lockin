@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Extract relevant status information
         const bundleStatus = status.result.value[0];
         let statusMessage = 'pending';
-        console.log(bundleStatus);
+       
         if (bundleStatus) {
             if (bundleStatus.err) {
                 statusMessage = 'rejected';
@@ -26,9 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 statusMessage = 'finalized';
             } else if (bundleStatus.confirmation_status === 'confirmed') {
                 statusMessage = 'accepted';
+            } else if (bundleStatus.confirmation_status === 'processed') {
+                statusMessage = 'processed';
             }
         }
-
+        console.log('bundleStatus: ', bundleStatus, ' statusMessage: ', statusMessage);
         return res.status(200).json({
             success: true,
             bundleId,

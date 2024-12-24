@@ -114,8 +114,9 @@ export const useCreateSwapInstructions = (
   const jupiterQuoteApi = createJupiterApiClient();
 
   useEffect(() => {
+    const transactions = pendingTransactions.current;
     return () => {
-      pendingTransactions.current.clear();
+      transactions.clear();
     };
   }, []);
 
@@ -326,7 +327,7 @@ export const useCreateSwapInstructions = (
         pendingTransactions.current.clear();
       }
     },
-    [publicKey, signAllTransactions, connection, setMessage, referralAccountPubkey]
+    [publicKey, signAllTransactions, connection, setMessage, referralAccountPubkey, jupiterQuoteApi]
   );
 
 

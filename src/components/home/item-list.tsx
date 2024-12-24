@@ -4,7 +4,6 @@ import { PublicKey, VersionedTransaction } from "@solana/web3.js"; // Import Pub
 import React, { useState, useEffect } from "react"; // Import React and necessary hooks
 import { toast } from "react-hot-toast"; // Import toast for notifications
 import { LOCKIN_MINT, REFERAL_WALLET } from "@utils/globals"; // Import global constants
-// import { useSendBatchTransaction } from "@utils/hooks/useSendBatchTransaction"; // Import hook to send batch transactions
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
 import { TokenItem, useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
@@ -27,18 +26,13 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [nfts, setNfts] = useState(initialItems); // Initialize NFTs state
   const [tipAmount, setTipAmount] = useState(1000); // Initialize tip amount state
   const [maxBps, setmaxBps] = useState(100); // Initialize tip amount state
-
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
   const [message, setMessage] = useState<string | null>(null); // Allow null
+
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
   const targetTokenMintAddress = LOCKIN_MINT; // Target token mint address
-  // const dustReceiver = new PublicKey(DEFAULT_WALLET); // Dust receiver public key
   const referralAccountPubkey = new PublicKey(REFERAL_WALLET); // Referral account public key
-  // const referralProgramId = REFER_PROGRAM_ID; // Referral program ID
-
-  // const { sending: sendingBatch } = useSendBatchTransaction();
-
   const safeSignAllTransactions = signAllTransactions || (async (txs: VersionedTransaction[]) => txs);
 
   const { handleClosePopup, sending } = useCreateSwapInstructions(
@@ -94,7 +88,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   const handleConfirmSelection = () => {
     if (selectedItems.size > 0) {
-      const tokenItems = new Set(Array.from(selectedItems).map(convertToTokenItem));
       setShowPopup(true);
       setErrorMessage(null);
     } else {
@@ -146,7 +139,6 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
     setClosableTokenAccounts(closeableItems); // Update closable token accounts state
   }, [closedTokenAccounts, items]);
 
-  const filteredItems = initialItems.filter(item => item.swappable);
 
   const handleSwapComplete = () => {
     // Wait a brief moment after confirmation before refreshing
@@ -270,7 +262,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
                   tipAmount,
                   handleSwapComplete
                 )}
-                // disabled={sendingBatch}
+              // disabled={sendingBatch}
               >
                 {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
               </button>
