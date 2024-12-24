@@ -20,14 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let statusMessage = 'pending';
        
         if (bundleStatus) {
-            if (bundleStatus.err) {
-                statusMessage = 'rejected';
-            } else if (bundleStatus.confirmation_status === 'finalized') {
+           if (bundleStatus.confirmation_status === 'finalized') {
                 statusMessage = 'finalized';
             } else if (bundleStatus.confirmation_status === 'confirmed') {
                 statusMessage = 'accepted';
             } else if (bundleStatus.confirmation_status === 'processed') {
                 statusMessage = 'processed';
+            } else if (bundleStatus.confirmation_status === 'rejected') {
+                statusMessage = 'rejected';
+            } else if (bundleStatus.confirmation_status === 'dropped') {
+                statusMessage = 'dropped';
             }
         }
         console.log('bundleStatus: ', bundleStatus, ' statusMessage: ', statusMessage);
