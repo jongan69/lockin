@@ -24,8 +24,9 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [closedTokenAccounts] = useState(new Set()); // Initialize closed token accounts state
   const [closableTokenAccounts, setClosableTokenAccounts] = useState(initialItems); // Initialize closable token accounts state
   const [nfts, setNfts] = useState(initialItems); // Initialize NFTs state
-  const [tipAmount, setTipAmount] = useState(1000); // Initialize tip amount state
-  const [maxBps, setmaxBps] = useState(100); // Initialize tip amount state
+  const [tipAmount, setTipAmount] = useState(0.001); // Initialize tip amount state
+  const [tipAmountLamports, setTipAmountLamports] = useState(tipAmount * 10 ** 9); // Initialize tip amount state
+  const [maxBps, setmaxBps] = useState(10); // Initialize tip amount state  at 10% slippage
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
   const [message, setMessage] = useState<string | null>(null); // Allow null
@@ -73,20 +74,19 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   };
 
   const handleTipChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
-    if (!isNaN(value)) {
-      setTipAmount(value); // Update tip amount state
-    }
+    const value = parseFloat(event.target.value);
+    if (!isNaN(value)) setTipAmount(value);
   };
 
   const handleBpsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(event.target.value, 10);
     if (!isNaN(value)) {
-      setmaxBps(value); // Update tip amount state
+      setmaxBps(value); // Update slippage percentage state
     }
   };
 
   const handleConfirmSelection = () => {
+    setTipAmountLamports(tipAmount * 10 ** 9);
     if (selectedItems.size > 0) {
       setShowPopup(true);
       setErrorMessage(null);
@@ -153,28 +153,35 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       <h2 className="text-center text-primary m-10">Total Estimated Accounts Value: ${totalValue.toFixed(2)}</h2>
       <div className="tip-amount-container">
         <label htmlFor="tip-amount" className="block text-sm font-medium text-white bold">
-          Jito Bundle Tip Amount (lamports):
+          Jito Bundle Tip Amount (SOL):
         </label>
         <input
           type="number"
           id="tip-amount"
           value={tipAmount}
           onChange={handleTipChange}
+          step="0.001"
+          min="0"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
         />
       </div>
 
+      <br />
       <div className="maxBps-container">
         <label htmlFor="maxBps" className="block text-sm font-medium text-white bold">
-          Max BPS Slippage for Jupiter Swaps (lamports):
+          Max Slippage for Jupiter Swaps (%):
         </label>
         <input
-          type="number"
-          id="maxBps-amount"
+          type="range"
+          id="maxBps-slider"
           value={maxBps}
           onChange={handleBpsChange}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+          min="0"
+          max="25"
+          step="1"
+          className="mt-1 block w-full"
         />
+        <span className="mt-1 text-sm block text-center">{maxBps}% Slippage</span>
       </div>
 
       <h1 className="text-center text-primary m-10">Swappable Tokens</h1>
@@ -259,20 +266,16 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
                   true,
                   new Set(Array.from(selectedItems).map(convertToTokenItem)),
                   setErrorMessage,
-                  tipAmount,
-                  handleSwapComplete
+                  tipAmountLamports,
+                  maxBps,
+                  handleSwapComplete,
                 )}
               // disabled={sendingBatch}
               >
                 {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
               </button>
               <button
-                onClick={() => handleClosePopup(
-                  false,
-                  new Set(Array.from(selectedItems).map(convertToTokenItem)),
-                  setErrorMessage,
-                  tipAmount
-                )}
+                onClick={() => setShowPopup(false)}
               >
                 No
               </button>

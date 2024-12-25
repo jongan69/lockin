@@ -126,6 +126,7 @@ export const useCreateSwapInstructions = (
       selectedItems: Set<TokenItem>,
       setErrorMessage: React.Dispatch<React.SetStateAction<string | null>>,
       bundleTip: number,
+      slippageBps: number,
       onSuccess?: () => void
     ) => {
       console.log('handleClosePopup started:', { answer, selectedItems, bundleTip });
@@ -172,8 +173,9 @@ export const useCreateSwapInstructions = (
             const params: QuoteGetRequest = {
               inputMint: selectedItem.mintAddress,
               outputMint: LOCKIN_MINT,
+              autoSlippage: true,
               amount: Number(balanceInSmallestUnit),
-              slippageBps: 50,
+              maxAutoSlippageBps: slippageBps,
               platformFeeBps: PLATFORM_FEE_BPS,
               onlyDirectRoutes: false,
               asLegacyTransaction: false,
@@ -265,6 +267,7 @@ export const useCreateSwapInstructions = (
                     toast.error('Transaction signing cancelled by user');
                     setMessage(null);
                     setSending(false);
+                    pendingTransactions.current.clear();
                     return; // Exit early
                   }
                   throw error; // Re-throw other errors
