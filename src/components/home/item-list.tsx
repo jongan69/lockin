@@ -262,7 +262,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
         </button>
       )}
 
-      {selectedItems.size > 0 && (
+      {selectedItems.size > 0 && !showPopup && (
         <button
           onClick={handleConfirmSelection} // Handle confirm selection event
           className="confirm-selection-button"
