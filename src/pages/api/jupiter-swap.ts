@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { JUPITERSWAPINSTRUCTIONS } from '@utils/endpoints';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const response = await fetch('https://quote-api.jup.ag/v6/swap-instructions', {
+    const response = await fetch(JUPITERSWAPINSTRUCTIONS, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -9,7 +9,8 @@ export const METAPLEX = "https://api.metaplex.solana.com";
 export const SERUM = "https://solana-api.projectserum.com";
 export const JUPITERPRICE = "https://api.jup.ag/price/v2";
 export const JUPITERQUOTE = "https://quote-api.jup.ag/v6/quote";
-export const JUPITERSWAP = "https://quote-api.jup.ag/v6/swap-instructions";
+export const JUPITERSWAP = "https://quote-api.jup.ag/v6/swap";
+export const JUPITERSWAPINSTRUCTIONS = "https://quote-api.jup.ag/v6/swap-instructions";
 export const HELIUS = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
 
 export const BLOCKENGINE_URL = `amsterdam.mainnet.block-engine.jito.wtf`

@@ -11,6 +11,7 @@ import { createJupiterApiClient, QuoteGetRequest, SwapRequest } from "@jup-ag/ap
 import { toast } from "react-hot-toast";
 import { LOCKIN_MINT, REFER_PROGRAM_ID } from "@utils/globals";
 import { fetchQuoteWithRetries } from "@utils/fetchQuote";
+import { JUPITERSWAP } from "@utils/endpoints";
 
 // Constants
 const PLATFORM_FEE_BPS = 10;
@@ -35,7 +36,7 @@ export async function getFeeAccount(
 
 // Submit swap request
 const submitSwapRequest = async (swapRequest: SwapRequest): Promise<any> => {
-  const response = await fetch("https://quote-api.jup.ag/v6/swap", {
+  const response = await fetch(JUPITERSWAP, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(swapRequest),
