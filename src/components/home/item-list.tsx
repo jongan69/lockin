@@ -4,6 +4,7 @@ import { Item } from "@components/home/item"; // Import the Item component
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"; // Import hooks for Solana wallet and connection
 import { PublicKey, VersionedTransaction } from "@solana/web3.js"; // Import PublicKey and TransactionInstruction from Solana web3.js
 import { toast } from "react-hot-toast"; // Import toast for notifications
+import { CgSpinner } from "react-icons/cg";
 
 // Import hooks
 import { TokenItem, useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions";
@@ -246,11 +247,18 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
       {closableTokenAccounts.length > 0 && (
         <button
-          onClick={handleCloseTokenAccounts} // Handle close token accounts event
+          onClick={handleCloseTokenAccounts}
           className="close-token-accounts-button"
           disabled={sending || closing}
         >
-          {closing ? "Closing..." : "Close (" + closableTokenAccounts.length + " Accounts)"}
+          {closing ? (
+            <span className="flex items-center justify-center gap-2">
+              <CgSpinner className="animate-spin h-5 w-5" />
+              Closing...
+            </span>
+          ) : (
+            `Close (${closableTokenAccounts.length} Accounts)`
+          )}
         </button>
       )}
 
