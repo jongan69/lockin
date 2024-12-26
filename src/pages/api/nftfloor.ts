@@ -1,8 +1,10 @@
+import { SIMPLEHASHSOLANA } from "@utils/endpoints";
+
 // nftfloor.ts
 export default async function handler(req: { query: { ca: any; }; }, res: { status: (arg0: number) => { (): any; new(): any; json: { (arg0: { floorPrice: any; uiFormmatted: any; usdValue: any }): void; new(): any; }; }; }) {
     const { ca } = req.query;
     // console.log(`Retrieving Floor Price for contract address: ${cid}`);
-    const url = `https://api.simplehash.com/api/v0/nfts/solana/${ca}/0`;
+    const url = `${SIMPLEHASHSOLANA}/${ca}/0`;
     const options = {
         method: 'GET',
         headers: { accept: 'application/json', 'X-API-KEY': process.env.SIMPLEHASH_API_KEY ?? "" },
