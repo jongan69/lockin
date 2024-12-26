@@ -154,6 +154,7 @@ export const useCreateSwapInstructions = (
         console.log('Processing items:', selectedItemsArray);
 
         const serializedSwapTxs: Uint8Array[] = [];
+        const skippedTokens: string[] = [];
 
         for (const selectedItem of selectedItemsArray) {
           try {
@@ -195,20 +196,48 @@ export const useCreateSwapInstructions = (
             console.log('Submitting swap request:', swapRequest);
 
             const swapResponse = await submitSwapRequest(swapRequest);
-            console.log('Swap response received:', swapResponse);
-
+            
+            // Simulate the transaction before adding it to the bundle
             try {
-              console.log('Processing swap response...');
               const { transaction: jupTransaction } = swapResponse;
-              // Just store the unserialized transaction
+              const simulation = await connection.simulateTransaction(jupTransaction, {
+                sigVerify: false,
+                replaceRecentBlockhash: true
+              });
+              
+              if (simulation.value.err) {
+                // Skip this swap and record the token
+                skippedTokens.push(selectedItem.symbol);
+                toast.error(`Skipping ${selectedItem.symbol}: Simulation failed`);
+                console.error(`Simulation failed for ${selectedItem.symbol}:`, simulation.value.err);
+                continue;
+              }
+              
+              // Only add successful simulations to the bundle
               serializedSwapTxs.push(jupTransaction.serialize());
               console.log('Swap transaction added to bundle');
-            } catch (error) {
-              console.error('Error processing swap for item:', selectedItem, error);
+            } catch (simError: any) {
+              // Skip this swap if simulation throws an error
+              skippedTokens.push(selectedItem.symbol);
+              toast.error(`Skipping ${selectedItem.symbol}: ${simError.message}`);
+              console.error('Simulation error for token:', selectedItem.symbol, simError);
+              continue;
             }
           } catch (error) {
+            // Skip this swap if quote/swap request fails
+            skippedTokens.push(selectedItem.symbol);
+            toast.error(`Failed to process ${selectedItem.symbol}`);
             console.error('Error processing swap for item:', selectedItem, error);
+            continue;
           }
+        }
+
+        if (skippedTokens.length > 0) {
+          toast.error(`Skipped tokens: ${skippedTokens.join(', ')}`);
+        }
+
+        if (serializedSwapTxs.length === 0) {
+          throw new Error("No valid swaps to process after simulations");
         }
 
         if (serializedSwapTxs.length > 0) {

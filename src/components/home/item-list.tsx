@@ -1,12 +1,17 @@
+import React, { useState, useEffect } from "react";
+// Import components
 import { Item } from "@components/home/item"; // Import the Item component
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"; // Import hooks for Solana wallet and connection
 import { PublicKey, VersionedTransaction } from "@solana/web3.js"; // Import PublicKey and TransactionInstruction from Solana web3.js
-import React, { useState, useEffect } from "react"; // Import React and necessary hooks
 import { toast } from "react-hot-toast"; // Import toast for notifications
-import { LOCKIN_MINT, REFERAL_WALLET } from "@utils/globals"; // Import global constants
+
+// Import hooks
+import { TokenItem, useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions";
 import { useCloseTokenAccount } from "@utils/hooks/useCloseTokenAccount"; // Import hook to close token accounts
+
+// Import global constants
+import { LOCKIN_MINT, REFERAL_WALLET } from "@utils/globals";
 import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
-import { TokenItem, useCreateSwapInstructions } from "@utils/hooks/useCreateSwapInstructions"; // Import hook to create swap instructions
 
 type Props = {
   initialItems: Array<TokenData>; // Define prop type for initial items
@@ -30,6 +35,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   const [showPopup, setShowPopup] = useState(false); // State to show/hide popup
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for error message
   const [message, setMessage] = useState<string | null>(null); // Allow null
+  const [closing, setClosing] = useState(false); // State for closing token accounts
 
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
   const targetTokenMintAddress = LOCKIN_MINT; // Target token mint address
@@ -96,6 +102,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
   };
 
   const handleCloseTokenAccounts = async () => {
+    setClosing(true);
     if (closableTokenAccounts.length > 0 && publicKey && signAllTransactions) {
       try {
         setMessage("Preparing to close accounts...");
@@ -106,11 +113,13 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
         if (success) {
           setClosableTokenAccounts([]);
           setMessage("");
+          setClosing(false);
         }
       } catch (error) {
         console.error("Error closing accounts:", error);
         toast.error("Error Closing Token Accounts, Please Reload Page.");
         setMessage("");
+        setClosing(false);
       }
     }
   };
@@ -239,8 +248,9 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
         <button
           onClick={handleCloseTokenAccounts} // Handle close token accounts event
           className="close-token-accounts-button"
+          disabled={sending || closing}
         >
-          Close ({closableTokenAccounts.length} Accounts)
+          {closing ? "Closing..." : "Close (" + closableTokenAccounts.length + " Accounts)"}
         </button>
       )}
 
@@ -254,13 +264,35 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
       )}
 
       {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-8 rounded shadow-lg max-w-sm w-full">
-            <p className="text-lg font-semibold">Do you want to lock MAX your selected tokens?</p>
-            <p className="text-sm text-gray-600 mt-2">**NOTE THIS WILL SELL ALL YOUR SELECTED TOKENS**</p>
-            {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
-            {message && <p className="text-blue-500 mt-2">{message}</p>}
-            <div className="flex justify-around mt-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-700 transform transition-all">
+            <h2 className="text-2xl font-bold text-white mb-4 text-center">Confirm Transaction</h2>
+            
+            <div className="space-y-4">
+              <p className="text-gray-300 text-center">
+                Are you sure you want to lock MAX your selected tokens?
+              </p>
+              
+              <div className="bg-red-900/50 p-4 rounded-lg border border-red-500">
+                <p className="text-red-400 text-sm font-medium text-center">
+                  WARNING: This action will sell all your selected tokens
+                </p>
+              </div>
+
+              {errorMessage && (
+                <div className="bg-red-900/50 p-4 rounded-lg">
+                  <p className="text-red-400 text-sm">{errorMessage}</p>
+                </div>
+              )}
+
+              {message && (
+                <div className="bg-blue-900/50 p-4 rounded-lg">
+                  <p className="text-blue-400 text-sm">{message}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-4 mt-6">
               <button
                 onClick={() => handleClosePopup(
                   true,
@@ -270,14 +302,17 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
                   maxBps,
                   handleSwapComplete,
                 )}
-              // disabled={sendingBatch}
+                disabled={sending}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Yes'}`}
+                {sending ? 'Processing...' : `${errorMessage ? 'Retry' : 'Confirm'}`}
               </button>
+              
               <button
                 onClick={() => setShowPopup(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
-                No
+                Cancel
               </button>
             </div>
           </div>
