@@ -353,7 +353,7 @@ export const useCreateSwapInstructions = (
       } catch (error: any) {
         console.error("Swap error:", error);
         setErrorMessage(error.toString());
-        toast.error("Failed to complete swaps");
+        toast.error("Failed to complete swaps. You might need to increase your slippage tolerance or try again later when the market is less volatile. If the issue persists, please reach out to our support team.");
       } finally {
         setSending(false);
         pendingTransactions.current.clear();
