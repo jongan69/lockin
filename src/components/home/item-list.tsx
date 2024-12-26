@@ -187,7 +187,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
           value={maxBps}
           onChange={handleBpsChange}
           min="0"
-          max="25"
+          max="50"
           step="1"
           className="mt-1 block w-full"
         />
