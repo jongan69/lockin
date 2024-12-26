@@ -1,3 +1,4 @@
+import { JUPITERQUOTE } from '@utils/endpoints';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const response = await fetch(
-      `https://quote-api.jup.ag/v6/quote?${params.toString()}`,
+      `${JUPITERQUOTE}?${params.toString()}`,
       {
         method: 'GET',
         headers: {

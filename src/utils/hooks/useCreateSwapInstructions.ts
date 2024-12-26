@@ -51,10 +51,10 @@ const submitSwapRequest = async (swapRequest: SwapRequest): Promise<any> => {
   // Return the entire transaction instead of just instructions
   return {
     transaction: VersionedTransaction.deserialize(
-      Buffer.from(json.swapTransaction, 'base64')
+      Buffer.from(json.swapTransaction, "base64") as any
     ),
     lastValidBlockHeight: json.lastValidBlockHeight,
-    computeUnitLimit: json.computeUnitLimit
+    computeUnitLimit: json.computeUnitLimit,
   };
 };
 

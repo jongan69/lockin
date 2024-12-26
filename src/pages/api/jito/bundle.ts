@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('Created Jito client');
 
         const decodedTxs = transactions.map((tx: string) => {
-            const decoded = VersionedTransaction.deserialize(Buffer.from(tx, 'base64'));
+            const decoded = VersionedTransaction.deserialize(Buffer.from(tx, 'base64') as any);
             console.log('Decoded transaction with blockhash:', decoded.message.recentBlockhash);
             return decoded;
         });
@@ -60,11 +60,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         if (cleanup) cleanup();
                     } else if (result.rejected) {
                         console.log('Bundle rejected:', JSON.stringify(result.rejected, null, 2));
-                        reject({ status: 'rejected', result, bundleId });
+                        resolve({ status: 'rejected', result, bundleId });
                         if (cleanup) cleanup();
                     } else if (result.dropped) {
                         console.log('Bundle dropped:', JSON.stringify(result.dropped, null, 2));
-                        reject({ status: 'dropped', result, bundleId });
+                        resolve({ status: 'dropped', result, bundleId });
                         if (cleanup) cleanup();
                     }
                 },

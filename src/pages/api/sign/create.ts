@@ -53,7 +53,7 @@ export default async function handler(
 
     // Deserialize the transaction
     const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
-    const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+    const transaction = VersionedTransaction.deserialize(swapTransactionBuf as any);
     // transaction.feePayer = publicKey;
 
     // transaction.recentBlockhash = blockHash;
