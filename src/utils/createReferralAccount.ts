@@ -5,6 +5,7 @@ import {
   Transaction,
   SendTransactionError,
 } from "@solana/web3.js";
+import { LOCKIN_MINT } from "./globals";
 
 interface CreateTokenReferralResult {
   success: boolean;
@@ -23,7 +24,7 @@ export const createTokenReferralAccount = async (
   wallet: WalletAdapter,
   rpcUrl: string,
   referralAccountPubKey: string,
-  mint: string = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB" // USDC mint
+  mint: string = LOCKIN_MINT
 ): Promise<CreateTokenReferralResult> => {
   if (!wallet.publicKey || !wallet.signAllTransactions || !wallet.sendTransaction) {
     return {
