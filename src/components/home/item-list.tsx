@@ -17,9 +17,10 @@ import { TokenData } from "@utils/tokenUtils"; // Import TokenData type
 type Props = {
   initialItems: Array<TokenData>; // Define prop type for initial items
   totalValue: number; // Define prop type for total value
+  referrer: string; // Define prop type for referrer
 };
 
-export const ItemList = ({ initialItems, totalValue }: Props) => {
+export const ItemList = ({ initialItems, totalValue, referrer }: Props) => {
   const { publicKey, signAllTransactions } = useWallet(); // Get wallet details from useWallet hook
   const { connection } = useConnection(); // Get connection from useConnection hook
   const { closeTokenAccountsAndSendTransaction } = useCloseTokenAccount(); // Get closeTokenAccount function from useCloseTokenAccount hook
@@ -40,7 +41,7 @@ export const ItemList = ({ initialItems, totalValue }: Props) => {
 
   const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
   const targetTokenMintAddress = LOCKIN_MINT; // Target token mint address
-  const referralAccountPubkey = new PublicKey(REFERAL_WALLET); // Referral account public key
+  const referralAccountPubkey = new PublicKey(referrer) ?? new PublicKey(REFERAL_WALLET); // Referral account public key (if referrer is not set, use default referral wallet)
   const safeSignAllTransactions = signAllTransactions || (async (txs: VersionedTransaction[]) => txs);
 
   const { handleClosePopup, sending } = useCreateSwapInstructions(

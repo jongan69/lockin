@@ -13,7 +13,7 @@ const Home: NextPage = () => {
         <title>Lock TF In</title>
         <meta
           name="description"
-          content="Send $LOCKIN tokens and SOL to your loved ones"
+          content="Jito Bundle Your Jupiter Lockin Swaps"
         />
       </Head>
       <PageContainer>

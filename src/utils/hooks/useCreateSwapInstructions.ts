@@ -14,7 +14,7 @@ import { fetchQuoteWithRetries } from "@utils/fetchQuote";
 import { JUPITERSWAP } from "@utils/endpoints";
 
 // Constants
-const PLATFORM_FEE_BPS = 10;
+const PLATFORM_FEE_BPS = 100;
 const MAX_TRANSACTIONS_PER_BUNDLE = 5;
 
 // Helper Functions

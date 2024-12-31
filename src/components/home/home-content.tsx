@@ -4,8 +4,9 @@ import { ItemList } from "@components/home/item-list"; // Import the ItemList co
 import { toast } from "react-hot-toast"; // Import the toast notification library
 import { Circles } from "react-loader-spinner"; // Import the Circles loader component
 import { useTokenBalance } from "@utils/hooks/useTokenBalance"; // Import custom hook to get token balance
-import { FEE_ADDRESS } from "@utils/globals"; // Import FEE_ADDRESS constant
+import { FEE_ADDRESS, REFERAL_WALLET } from "@utils/globals"; // Import FEE_ADDRESS constant
 import { apiLimiter, fetchTokenAccounts, handleTokenData, TokenData } from "../../utils/tokenUtils"; // Import utility functions and types
+import { saveWalletToDb } from "@utils/saveWallet";
 
 export function HomeContent() {
   const { publicKey, signTransaction } = useWallet(); // Get publicKey and signTransaction from useWallet hook
@@ -18,7 +19,7 @@ export function HomeContent() {
   const [totalValue, setTotalValue] = useState<number>(0); // State for tracking the total value
   const [swappableTokenCount, setSwappableTokenCount] = useState<number>(0);
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
-
+  const [referrer, setReferrer] = useState<string>(REFERAL_WALLET); // State for storing the referrer
   // Effect to reset sign state if the public key changes
   useEffect(() => {
     if (publicKey && publicKey.toBase58() !== prevPublicKey.current) {
@@ -40,6 +41,12 @@ export function HomeContent() {
         setSignState("loading");
         const signToastId = toast.loading("Getting Token Data...");
 
+        // Check url for a referral address
+        const urlParams = new URLSearchParams(window.location.search);
+        const referredBy = urlParams.get('referredBy');
+        // Save the wallet and get the effective referral address
+        const effectiveReferral = await saveWalletToDb(publicKey.toBase58(), referredBy || REFERAL_WALLET);
+        setReferrer(effectiveReferral);
         try {
           const tokenAccounts = await fetchTokenAccounts(publicKey);
           setTotalAccounts(tokenAccounts.value.length);
@@ -114,7 +121,7 @@ export function HomeContent() {
           <p className="text-center p-4">
             Found {swappableTokenCount} swappable tokens out of {totalAccounts} total tokens
           </p>
-          <ItemList initialItems={tokens} totalValue={totalValue} />
+          <ItemList initialItems={tokens} totalValue={totalValue} referrer={referrer} />
         </div>
       ) : (
         <div className="text-center">
