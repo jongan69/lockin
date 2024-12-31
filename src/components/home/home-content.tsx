@@ -53,7 +53,7 @@ export function HomeContent() {
 
           // Fetch token data for each account
           const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount) => {
-            const tokenData = await handleTokenData(publicKey, tokenAccount, apiLimiter);
+            const tokenData = await handleTokenData(publicKey, tokenAccount);
             if (tokenData?.swappable) {
               updateTotalValue(tokenData.usdValue);
               setSwappableTokenCount(prev => prev + 1);

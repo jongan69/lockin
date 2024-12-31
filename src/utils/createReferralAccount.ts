@@ -4,14 +4,17 @@ import {
   PublicKey,
   Transaction,
   SendTransactionError,
+  Keypair,
 } from "@solana/web3.js";
-import { LOCKIN_MINT } from "./globals";
+import { LOCKIN_MINT, JUPITER_PROJECT } from "./globals";
 
-interface CreateTokenReferralResult {
+interface CreateReferralResult {
   success: boolean;
+  referralAccountPubKey?: string;
   referralTokenAccountPubKey?: string;
   txId?: string;
   error?: string;
+  exists?: boolean;
 }
 
 interface WalletAdapter {
@@ -23,9 +26,9 @@ interface WalletAdapter {
 export const createTokenReferralAccount = async (
   wallet: WalletAdapter,
   rpcUrl: string,
-  referralAccountPubKey: string,
+  referralWallet: string,
   mint: string = LOCKIN_MINT
-): Promise<CreateTokenReferralResult> => {
+): Promise<CreateReferralResult> => {
   if (!wallet.publicKey || !wallet.signAllTransactions || !wallet.sendTransaction) {
     return {
       success: false,
@@ -37,38 +40,89 @@ export const createTokenReferralAccount = async (
     const connection = new Connection(rpcUrl);
     const provider = new ReferralProvider(connection);
 
-    const { tx, referralTokenAccountPubKey } = await provider.initializeReferralTokenAccount({
+    // First create the referral account
+    const referralAccountKeypair = Keypair.generate();
+    
+    const referralTx = await provider.initializeReferralAccount({
       payerPubKey: wallet.publicKey,
-      referralAccountPubKey: new PublicKey(referralAccountPubKey),
+      partnerPubKey: new PublicKey(referralWallet),
+      projectPubKey: JUPITER_PROJECT,
+      referralAccountPubKey: referralAccountKeypair.publicKey,
+    });
+
+    // Check if referral account exists
+    const referralAccount = await connection.getAccountInfo(referralAccountKeypair.publicKey);
+    let referralAccountPubKey = referralAccountKeypair.publicKey;
+
+    if (!referralAccount) {
+      const { blockhash } = await connection.getLatestBlockhash();
+      referralTx.recentBlockhash = blockhash;
+      referralTx.feePayer = wallet.publicKey;
+      
+      // Add the referral account keypair as a signer after setting blockhash
+      referralTx.sign(referralAccountKeypair);
+
+      try {
+        const [signedTx] = await wallet.signAllTransactions([referralTx]);
+        const signature = await wallet.sendTransaction(signedTx, connection);
+        // Wait for confirmation
+        await connection.confirmTransaction({
+          signature,
+          blockhash: (await connection.getLatestBlockhash()).blockhash,
+          lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+        });
+      } catch (error) {
+        console.error('Error creating referral account:', error);
+        throw new Error('Failed to create referral account');
+      }
+    }
+
+    // Now create the referral token account
+    const { tx: tokenTx, referralTokenAccountPubKey } = await provider.initializeReferralTokenAccount({
+      payerPubKey: wallet.publicKey,
+      referralAccountPubKey: referralAccountPubKey,
       mint: new PublicKey(mint),
     });
 
-    // Check if account already exists
+    // Check if token account exists
     const referralTokenAccount = await connection.getAccountInfo(referralTokenAccountPubKey);
 
     if (referralTokenAccount) {
       return {
         success: true,
+        referralAccountPubKey: referralAccountPubKey.toBase58(),
         referralTokenAccountPubKey: referralTokenAccountPubKey.toBase58(),
-        error: "Token referral account already exists"
+        exists: true
       };
     }
 
     const { blockhash } = await connection.getLatestBlockhash();
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = wallet.publicKey;
+    tokenTx.recentBlockhash = blockhash;
+    tokenTx.feePayer = wallet.publicKey;
 
-    const [signedTx] = await wallet.signAllTransactions([tx]);
-    const txId = await wallet.sendTransaction(signedTx, connection);
+    try {
+      const [signedTx] = await wallet.signAllTransactions([tokenTx]);
+      const signature = await wallet.sendTransaction(signedTx, connection);
+      // Wait for confirmation
+      await connection.confirmTransaction({
+        signature,
+        blockhash: (await connection.getLatestBlockhash()).blockhash,
+        lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+      });
 
-    return {
-      success: true,
-      referralTokenAccountPubKey: referralTokenAccountPubKey.toBase58(),
-      txId
-    };
+      return {
+        success: true,
+        referralAccountPubKey: referralAccountPubKey.toBase58(),
+        referralTokenAccountPubKey: referralTokenAccountPubKey.toBase58(),
+        txId: signature
+      };
+    } catch (error) {
+      console.error('Error creating token account:', error);
+      throw new Error('Failed to create token account');
+    }
 
   } catch (error) {
-    console.error('Error creating token referral account:', error);
+    console.error('Error creating referral accounts:', error);
     if (error instanceof SendTransactionError) {
       return {
         success: false,

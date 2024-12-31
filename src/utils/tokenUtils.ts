@@ -284,9 +284,7 @@ export async function fetchTokenAccounts(publicKey: PublicKey) {
 
 export async function handleTokenData(
   publicKey: PublicKey,
-  tokenAccount: any,
-  rateLimiter: any
-): Promise<TokenData | null> {
+  tokenAccount: any): Promise<TokenData | null> {
   const mintAddress = tokenAccount.account.data.parsed.info.mint;
   const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
   const decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
