@@ -6,6 +6,7 @@ import {
   Transaction,
   SendTransactionError,
   Keypair,
+  clusterApiUrl
 } from "@solana/web3.js";
 import { LOCKIN_MINT, JUPITER_PROJECT } from "./globals";
 import { NETWORK } from "./endpoints";
@@ -40,7 +41,11 @@ export const createTokenReferralAccount = async (
   }
 
   try {
-    const connection = new Connection(NETWORK);
+    const connection = new Connection(
+      NETWORK.startsWith('http') ? NETWORK : clusterApiUrl("mainnet-beta"),
+      'confirmed'
+    );
+    
     const provider = new ReferralProvider(connection);
 
     // If we have an existing referral account, skip to creating token account

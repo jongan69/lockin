@@ -1,3 +1,4 @@
+'use client'
 import { useWallet } from "@solana/wallet-adapter-react"; // Import the useWallet hook from Solana wallet adapter
 import React, { useEffect, useState, useRef } from "react"; // Import React and necessary hooks
 import { ItemList } from "@components/home/item-list"; // Import the ItemList component

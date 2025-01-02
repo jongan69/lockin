@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 
 export const DEFAULT_THEME = "night";
+export const raydiumUrl = "https://raydium.io/swap/?inputMint=sol&outputMint=8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5&referrer=9yA9LPCRv8p8V8ZvJVYErrVGWbwqAirotDTQ8evRxE5N"; // URL for Raydium swap
 
 export const DEFAULT_WALLET = "AMSi7nsBbYVVETPu5rXuC9KgabyXWc1thtfX3L7pSVqd"; // Dustfolio
 export const LOCKIN_MINT = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5"; // Lockin
