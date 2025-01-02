@@ -1,4 +1,3 @@
-import { ReferralProvider } from "@jup-ag/referral-sdk";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { NETWORK } from "./endpoints";
 import { LOCKIN_MINT } from "./globals";
@@ -19,6 +18,9 @@ export async function claimReferralTokens(
   try {
     console.log('Starting claim process...');
     const connection = new Connection(NETWORK, 'confirmed');
+
+    // Dynamically import the ReferralProvider
+    const { ReferralProvider } = await import('@jup-ag/referral-sdk');
     const provider = new ReferralProvider(connection);
 
     // Get claim transaction

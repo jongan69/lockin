@@ -1,6 +1,8 @@
+'use client'
 import { PageContainer } from "@components/layout/page-container";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
 import { saveWalletToDb, updateWalletReferralAccount } from "@utils/saveWallet";
 import { LOCKIN_MINT, REFERAL_ADDRESS } from "@utils/globals";
 import { Header } from "@components/layout/header";
