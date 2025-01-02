@@ -4,13 +4,13 @@ import dynamic from "next/dynamic";
 import { ConnectionProvider } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import ClientWalletProvider from "@components/contexts/ClientWalletProvider";
-import { HELIUS } from "@utils/endpoints";
+import { RPC_URL } from "@utils/endpoints";
 import { Toaster } from "react-hot-toast";
 
 import "../styles/globals.css";
 import "../styles/App.css";
 
-const endpoint = HELIUS!;
+const endpoint = RPC_URL!;
 
 // console.log("endpoint", endpoint);
 const ReactUIWalletModalProviderDynamic = dynamic(

@@ -40,7 +40,7 @@ For feedback on on-chain actions, the dApp integrates [react-hot-toast](https://
 3. Get an API key from [Simplehash](https://simplehash.com/) to fetch token metadata.
 
 ```
-NEXT_PUBLIC_HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<your key>
+NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<your key>
 UNKNOWN_IMAGE_URL=https://s3.coinmarketcap.com/static-gravity/image/5cc0b99a8dd84fbfa4e150d84b5531f2.png
 SIMPLEHASH_API_KEY=<your key>
 ```

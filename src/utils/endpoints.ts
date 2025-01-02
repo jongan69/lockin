@@ -17,6 +17,6 @@ export const JUPITERSWAPINSTRUCTIONS = "https://quote-api.jup.ag/v6/swap-instruc
 export const SIMPLEHASHSOLANA = "https://api.simplehash.com/api/v0/nfts/solana"
 export const BLOCKENGINE_URL = `amsterdam.mainnet.block-engine.jito.wtf`
 
-export const HELIUS = process.env.NEXT_PUBLIC_RPC_URL;
+export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 // You can use any of the other enpoints here
-export const NETWORK = HELIUS ?? SOLANA_MAIN;
+export const NETWORK = RPC_URL ?? SOLANA_MAIN;
