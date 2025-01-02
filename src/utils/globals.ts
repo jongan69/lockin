@@ -4,8 +4,8 @@ export const DEFAULT_THEME = "night";
 
 export const DEFAULT_WALLET = "AMSi7nsBbYVVETPu5rXuC9KgabyXWc1thtfX3L7pSVqd"; // Dustfolio
 export const LOCKIN_MINT = "8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5"; // Lockin
-export const REFERAL_WALLET = "2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE"; // Jupiter Swap Referral Public Key
-export const FEE_ADDRESS = "HtwJmJn17DUrQ1cdgPHjqPnXJxNjJPdfwM13wTdbA4Ep"; // Jupiter Swap Referral Token Address
+export const REFERAL_ADDRESS = "2J8jsZmyTRwCYfX4aAKqdh763Y2UHMudnRh7b9Z9hBXE"; // Jupiter Swap Referral Public Key
+export const REFERAL_TOKEN_ADDRESS = "HtwJmJn17DUrQ1cdgPHjqPnXJxNjJPdfwM13wTdbA4Ep"; // Jupiter Swap Referral Token Address
 
 // Just in case we need to change these
 export const COMPUTE_UNIT_LIMIT = 200000;

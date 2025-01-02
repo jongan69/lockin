@@ -1,33 +1,37 @@
 import { PageContainer } from "@components/layout/page-container";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { saveWalletToDb } from "@utils/saveWallet";
-import { LOCKIN_MINT, REFERAL_WALLET } from "@utils/globals";
+import { saveWalletToDb, updateWalletReferralAccount } from "@utils/saveWallet";
+import { LOCKIN_MINT, REFERAL_ADDRESS } from "@utils/globals";
 import { Header } from "@components/layout/header";
 import { createTokenReferralAccount } from "@utils/createReferralAccount";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { FiCopy, FiExternalLink } from 'react-icons/fi';
 import { useTokenBalance } from "@utils/hooks/useTokenBalance";
+import { getReferralAccount } from "@utils/getReferralAccount";
+import { PublicKey } from "@solana/web3.js";
+import { claimReferralTokens } from "@utils/claimReferralTokens";
+import { useConnection } from "@solana/wallet-adapter-react";
 
 const getReferredBy = async (user: string | string[] | undefined, referrer: string | string[] | undefined) => {
   if (!user) return 'Unknown';
   
   // Convert potential array to string (Next.js query params can be arrays)
   const address = Array.isArray(user) ? user[0] : user;
-  const referredBy = Array.isArray(referrer) ? referrer[0] : (referrer || REFERAL_WALLET);
+  const referredBy = Array.isArray(referrer) ? referrer[0] : (referrer || REFERAL_ADDRESS);
   try {
     // Save wallet and get the actual referrer from DB
     const actualReferrer = await saveWalletToDb(address, referredBy);
     return actualReferrer;
   } catch (error) {
     console.error('Error getting referral:', error);
-    return REFERAL_WALLET;
+    return REFERAL_ADDRESS;
   }
 };
 
 const formatTokenBalance = (balance: number | null): string => {
   if (balance === null) return '0';
-  return (balance / Math.pow(10, 9)).toFixed(4); // Assuming 9 decimals for SPL tokens
+  return balance.toString(); // Assuming 9 decimals for SPL tokens
 };
 
 const ReferralPage = () => {
@@ -39,16 +43,73 @@ const ReferralPage = () => {
     const [copied, setCopied] = useState(false);
     const wallet = useWallet();
     const [accountExists, setAccountExists] = useState(false);
-    const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+    const [tokenAccount, setTokenAccount] = useState<any>(null);
+    const [isCheckingAccount, setIsCheckingAccount] = useState(true);
+    const [hasTokenAccount, setHasTokenAccount] = useState<boolean>(false);
+    const { connection } = useConnection();
+    const [isClaiming, setIsClaiming] = useState(false);
+    const [claimError, setClaimError] = useState<string | null>(null);
     
-    const { balance } = useTokenBalance(accountExists && newReferralAccount ? newReferralAccount : '');
+    // Only fetch balance if we have a valid referral account
+    const { balance, balanceLoading, error: balanceError } = useTokenBalance(
+        accountExists && tokenAccount ? tokenAccount : null
+    );
 
+    // Add error boundary
     useEffect(() => {
-        if (balance !== null && accountExists) {
-            setTokenBalance(balance);
+        if (balanceError) {
+            console.error('Error loading balance:', balanceError);
+            // Maybe add some user feedback here
         }
-    }, [balance, accountExists]);
+    }, [balanceError]);
 
+    // Add new effect to detect wallet's referral account
+    useEffect(() => {
+        const detectReferralAccount = async () => {
+            if (!wallet.publicKey) {
+                console.log('No wallet connected');
+                return;
+            }
+            
+            setIsCheckingAccount(true);
+            
+            try {
+                const referralAccountInfo = await getReferralAccount(wallet.publicKey.toBase58());
+
+                if (referralAccountInfo) {
+                    setNewReferralAccount(referralAccountInfo.referralAccount.toBase58());
+                    
+                    // Check if token account exists and is properly initialized
+                    if (referralAccountInfo.referralTokenAccount) {
+                        setTokenAccount(referralAccountInfo.referralTokenAccount.toBase58());
+                        setHasTokenAccount(true);
+                        setAccountExists(true);
+                    } else {
+                        // Token account doesn't exist or isn't properly initialized
+                        console.log('Token account needs initialization');
+                        setHasTokenAccount(false);
+                        setTokenAccount(null);
+                        setAccountExists(true); // Referral account exists, but token account needs creation
+                    }
+                } else {
+                    setAccountExists(false);
+                    setNewReferralAccount(null);
+                    setHasTokenAccount(false);
+                }
+            } catch (error) {
+                console.error('Error in detectReferralAccount:', error);
+                setAccountExists(false);
+                setNewReferralAccount(null);
+                setHasTokenAccount(false);
+            } finally {
+                setIsCheckingAccount(false);
+            }
+        };
+
+        detectReferralAccount();
+    }, [wallet.publicKey]);
+
+    // Keep existing useEffect for referral info
     useEffect(() => {
         const initializeReferral = async () => {
             if (user) {
@@ -58,7 +119,6 @@ const ReferralPage = () => {
         };
 
         initializeReferral();
-        
     }, [user, referrer]);
 
     const handleCreateReferralAccount = async () => {
@@ -71,15 +131,16 @@ const ReferralPage = () => {
         setCreateAccountError(null);
         
         try {
-            const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL || "";
+            const walletAddress = wallet.publicKey.toBase58();
             
-            const result = await createTokenReferralAccount(wallet, rpcUrl, wallet.publicKey.toBase58(), LOCKIN_MINT);
+            const result = await createTokenReferralAccount(wallet, walletAddress, LOCKIN_MINT);
             
             if (result.success && result.referralTokenAccountPubKey) {
+                // Update the wallet in the database with the new referral account
+                await updateWalletReferralAccount(walletAddress, result.referralTokenAccountPubKey);
+                
                 setNewReferralAccount(result.referralTokenAccountPubKey);
-                if (result.exists) {
-                    setAccountExists(true);
-                }
+                setAccountExists(result.exists || false);
             } else {
                 setCreateAccountError(result.error || 'Failed to create referral account');
             }
@@ -97,6 +158,65 @@ const ReferralPage = () => {
 
     const referralLink = `https://lock.wtf?referredBy=${newReferralAccount}`;
 
+    const handleCreateTokenAccount = async () => {
+        if (!wallet.connected || !wallet.publicKey || !newReferralAccount) {
+            setCreateAccountError('Please connect your wallet first');
+            return;
+        }
+
+        setIsCreatingAccount(true);
+        setCreateAccountError(null);
+        
+        try {
+            const walletAddress = wallet.publicKey.toBase58();
+            
+            const result = await createTokenReferralAccount(
+                wallet, 
+                walletAddress, 
+                LOCKIN_MINT,
+                new PublicKey(newReferralAccount) // Pass existing referral account
+            );
+            
+            if (result.success && result.referralTokenAccountPubKey) {
+                setTokenAccount(new PublicKey(result.referralTokenAccountPubKey));
+                setHasTokenAccount(true);
+                // Update the wallet in the database with the new token account
+                await updateWalletReferralAccount(walletAddress, result.referralTokenAccountPubKey);
+            } else {
+                setCreateAccountError(result.error || 'Failed to create token account');
+            }
+        } catch (error) {
+            setCreateAccountError(error instanceof Error ? error.message : 'Unknown error occurred');
+        } finally {
+            setIsCreatingAccount(false);
+        }
+    };
+
+    const handleClaimTokens = async () => {
+        if (!wallet.connected || !wallet.publicKey || !newReferralAccount) {
+            setClaimError('Please connect your wallet first');
+            return;
+        }
+
+        setIsClaiming(true);
+        setClaimError(null);
+
+        try {
+            const result = await claimReferralTokens(
+                wallet,
+                new PublicKey(newReferralAccount)
+            );
+
+            if (!result.success) {
+                setClaimError(result.error || 'Failed to claim tokens');
+            }
+        } catch (error) {
+            setClaimError(error instanceof Error ? error.message : 'Unknown error occurred');
+        } finally {
+            setIsClaiming(false);
+        }
+    };
+
     return (
         <PageContainer>
             <Header />
@@ -110,13 +230,9 @@ const ReferralPage = () => {
                             {Array.isArray(user) ? user[0] : user}
                         </code>
                         
-                        <p className="text-gray-600 mt-4 mb-2">Referred by:</p>
-                        <code className="bg-gray-100 px-2 py-1 rounded text-sm sm:text-base break-all">
-                            {referredBy}
-                        </code>
                     </div>
 
-                    {!newReferralAccount && (
+                    {!newReferralAccount && !isCheckingAccount && (
                         <div className="mb-6 sm:mb-8">
                             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create Your Referral Account</h2>
                             <p className="text-sm sm:text-base text-gray-600 mb-4">
@@ -136,6 +252,12 @@ const ReferralPage = () => {
                                         : 'Create Referral Account'
                                 }
                             </button>
+                        </div>
+                    )}
+
+                    {isCheckingAccount && (
+                        <div className="text-center py-4">
+                            <p className="text-gray-600">Checking for existing referral account...</p>
                         </div>
                     )}
 
@@ -162,10 +284,49 @@ const ReferralPage = () => {
                                             <div>
                                                 <h3 className="text-sm font-medium text-gray-500">Total Earned</h3>
                                                 <div className="mt-1 flex items-baseline">
-                                                    <span className="text-2xl font-semibold text-gray-900">
-                                                        {formatTokenBalance(tokenBalance)}
-                                                    </span>
-                                                    <span className="ml-2 text-sm text-gray-500">LOCKIN</span>
+                                                    {!hasTokenAccount ? (
+                                                        <div>
+                                                            <p className="text-sm text-gray-500 mb-2">Token account not created yet</p>
+                                                            <button
+                                                                onClick={handleCreateTokenAccount}
+                                                                disabled={isCreatingAccount}
+                                                                className="px-4 py-2 bg-blue-500 text-white rounded-lg 
+                                                                         hover:bg-blue-600 disabled:bg-gray-400 
+                                                                         disabled:cursor-not-allowed transition-colors text-sm"
+                                                            >
+                                                                {isCreatingAccount ? 'Creating...' : 'Create Token Account'}
+                                                            </button>
+                                                        </div>
+                                                    ) : balanceLoading ? (
+                                                        <span className="text-sm text-gray-500">Loading...</span>
+                                                    ) : balanceError ? (
+                                                        <span className="text-sm text-red-500">Error loading balance</span>
+                                                    ) : (
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-2xl font-semibold text-gray-900">
+                                                                    {formatTokenBalance(balance)}
+                                                                </span>
+                                                                <span className="text-sm text-gray-500">LOCKIN</span>
+                                                            </div>
+                                                            {balance !== null && balance > 0 && (
+                                                                <div className="mt-2">
+                                                                    <button
+                                                                        onClick={handleClaimTokens}
+                                                                        disabled={isClaiming}
+                                                                        className="px-4 py-2 bg-green-500 text-white rounded-lg 
+                                                                                 hover:bg-green-600 disabled:bg-gray-400 
+                                                                                 disabled:cursor-not-allowed transition-colors text-sm"
+                                                                    >
+                                                                        {isClaiming ? 'Claiming...' : 'Claim Tokens'}
+                                                                    </button>
+                                                                    {claimError && (
+                                                                        <p className="text-red-500 text-sm mt-1">{claimError}</p>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="rounded-full bg-green-50 p-2">

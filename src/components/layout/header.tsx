@@ -2,6 +2,7 @@ import React from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 export const Header: React.FC = () => {
   const { publicKey } = useWallet();
@@ -16,9 +17,11 @@ export const Header: React.FC = () => {
   return (
     <header className="flex items-center justify-between py-6 mb-12">
       <div className="flex items-center space-x-4">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          Lock TF In
-        </h1>
+        <Link href="/">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent cursor-pointer">
+            Lock TF In
+          </h1>
+        </Link>
       </div>
       <div className="flex items-center space-x-4">
         <button 

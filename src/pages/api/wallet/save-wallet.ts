@@ -1,4 +1,4 @@
-import { REFERAL_WALLET } from '@utils/globals';
+import { REFERAL_ADDRESS } from '@utils/globals';
 import { MongoClient } from 'mongodb';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
@@ -16,14 +16,14 @@ export default async function handler(
         return res.status(405).json({ message: 'Method not allowed' });
     }
 
-    let { address, referredBy } = req.body;
+    let { address, referredBy, referralAccountPubKey } = req.body;
 
     if (!address) {
         return res.status(400).json({ message: 'Wallet address is required' });
     }
 
     if (!referredBy) {
-        referredBy = REFERAL_WALLET;
+        referredBy = REFERAL_ADDRESS;
     }
 
     try {
