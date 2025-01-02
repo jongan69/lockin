@@ -1,3 +1,4 @@
+'use client'
 import { ReferralProvider } from "@jup-ag/referral-sdk";
 import {
   Connection,

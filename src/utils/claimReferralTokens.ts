@@ -1,6 +1,7 @@
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+'use client'
+import { ReferralProvider } from "@jup-ag/referral-sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { NETWORK } from "./endpoints";
-import { LOCKIN_MINT } from "./globals";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
 export interface ClaimReferralResult {
@@ -17,38 +18,61 @@ export async function claimReferralTokens(
 ): Promise<ClaimReferralResult> {
   try {
     console.log('Starting claim process...');
-    const connection = new Connection(NETWORK, 'confirmed');
-
-    // Dynamically import the ReferralProvider
-    const { ReferralProvider } = await import('@jup-ag/referral-sdk');
+    const connection = new Connection(NETWORK);
     const provider = new ReferralProvider(connection);
 
-    // Get claim transaction
-    console.log('Fetching claim transaction...');
-    const tx = await provider.claim({
+    // Get all withdrawable token accounts
+    console.log('Fetching withdrawable tokens...');
+    const referralTokens = await provider.getReferralTokenAccountsWithStrategy(
+      referralAccountPubKey.toString(),
+      { type: "token-list", tokenList: "all" }
+    );
+
+    const withdrawableTokenAddress = [
+      ...(referralTokens.tokenAccounts || []),
+      ...(referralTokens.token2022Accounts || []),
+    ].map((a) => a.pubkey);
+
+    if (withdrawableTokenAddress.length === 0) {
+      console.log('No withdrawable tokens found');
+      return { success: true, txids: [] };
+    }
+
+    console.log(`Found ${withdrawableTokenAddress.length} withdrawable tokens`);
+
+    // Get claim transactions
+    const txs = await provider.claimAll({
+
       payerPubKey: wallet.publicKey!,
-      referralAccountPubKey,
-      mint: new PublicKey(LOCKIN_MINT)
+      referralAccountPubKey
     });
 
     if (!wallet.sendTransaction) {
       throw new Error('Wallet does not support sending transactions');
     }
 
-    console.log('Sending transaction...');
-    const signature = await wallet.sendTransaction(tx, connection);
-    console.log('Transaction sent, signature:', signature);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    const txids: string[] = [];
 
-    const latestBlockhash = await connection.getLatestBlockhash();
-    await connection.confirmTransaction({
-      signature,
-      ...latestBlockhash
-    });
-    console.log('Transaction confirmed');
+    // Send each claim transaction
+    for (const tx of txs) {
+      console.log('Sending transaction...');
+      const signature = await wallet.sendTransaction(tx, connection);
+      console.log('Transaction sent, signature:', signature);
+
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      });
+      console.log('Transaction confirmed');
+
+      txids.push(signature);
+    }
 
     return {
       success: true,
-      txids: [signature]
+      txids
     };
   } catch (error) {
     console.error('Failed to claim referral tokens:', error);

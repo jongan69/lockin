@@ -1,3 +1,4 @@
+'use client'
 import { LOCKIN_MINT } from "./globals";
 import { ReferralProvider } from "@jup-ag/referral-sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
