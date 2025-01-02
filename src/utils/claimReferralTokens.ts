@@ -18,60 +18,35 @@ export async function claimReferralTokens(
 ): Promise<ClaimReferralResult> {
   try {
     console.log('Starting claim process...');
-    const connection = new Connection(NETWORK);
+    const connection = new Connection(NETWORK, 'confirmed');
     const provider = new ReferralProvider(connection);
 
-    // Get all withdrawable token accounts
-    console.log('Fetching withdrawable tokens...');
-    const referralTokens = await provider.getReferralTokenAccountsWithStrategy(
-      referralAccountPubKey.toString(),
-      { type: "token-list", tokenList: "strict" }
-    );
-
-    const withdrawableTokenAddress = [
-      ...(referralTokens.tokenAccounts || []),
-      ...(referralTokens.token2022Accounts || []),
-    ].map((a) => a.pubkey);
-
-    if (withdrawableTokenAddress.length === 0) {
-      console.log('No withdrawable tokens found');
-      return { success: true, txids: [] };
-    }
-
-    console.log(`Found ${withdrawableTokenAddress.length} withdrawable tokens`);
-
-    // Get claim transactions
-    const txs = await provider.claimAll({
+    // Get claim transaction
+    console.log('Fetching claim transaction...');
+    const tx = await provider.claim({
       payerPubKey: wallet.publicKey!,
-      referralAccountPubKey
+      referralAccountPubKey,
+      mint: new PublicKey(LOCKIN_MINT)
     });
 
     if (!wallet.sendTransaction) {
       throw new Error('Wallet does not support sending transactions');
     }
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    const txids: string[] = [];
+    console.log('Sending transaction...');
+    const signature = await wallet.sendTransaction(tx, connection);
+    console.log('Transaction sent, signature:', signature);
 
-    // Send each claim transaction
-    for (const tx of txs) {
-      console.log('Sending transaction...');
-      const signature = await wallet.sendTransaction(tx, connection);
-      console.log('Transaction sent, signature:', signature);
-
-      await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight,
-      });
-      console.log('Transaction confirmed');
-
-      txids.push(signature);
-    }
+    const latestBlockhash = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({
+      signature,
+      ...latestBlockhash
+    });
+    console.log('Transaction confirmed');
 
     return {
       success: true,
-      txids
+      txids: [signature]
     };
   } catch (error) {
     console.error('Failed to claim referral tokens:', error);
