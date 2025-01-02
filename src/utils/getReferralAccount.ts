@@ -1,12 +1,15 @@
 'use client'
 import { LOCKIN_MINT } from "./globals";
 import { ReferralProvider } from "@jup-ag/referral-sdk";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
 import { NETWORK } from "./endpoints";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const getReferralAccount = async (walletAddress: string) => {
-    const connection = new Connection(NETWORK);
+    const connection = new Connection(
+        NETWORK.startsWith('http') ? NETWORK : clusterApiUrl("mainnet-beta"),
+        'confirmed'
+      );
     const provider = new ReferralProvider(connection);
 
     if (!walletAddress) {

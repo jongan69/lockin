@@ -1,6 +1,6 @@
 'use client'
 import { ReferralProvider } from "@jup-ag/referral-sdk";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
 import { NETWORK, SOLANA_MAIN } from "./endpoints";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import { LOCKIN_MINT } from "./globals";
@@ -19,8 +19,10 @@ export async function claimReferralTokens(
 ): Promise<ClaimReferralResult> {
     try {
         console.log('Starting claim process...');
-        
-        const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=59516a79-eec8-4ff4-a505-63ea684999b5", "processed");
+        const connection = new Connection(
+            NETWORK.startsWith('http') ? NETWORK : clusterApiUrl("mainnet-beta"),
+            'confirmed'
+          );
         const provider = new ReferralProvider(connection);
 
         // Get claim transactions
