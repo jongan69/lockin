@@ -21,6 +21,7 @@ export function HomeContent() {
   const [swappableTokenCount, setSwappableTokenCount] = useState<number>(0);
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
   const [referrer, setReferrer] = useState<string>(REFERAL_ADDRESS); // State for storing the referrer
+  const [processedAccounts, setProcessedAccounts] = useState<number>(0); // Add this new state
   // Effect to reset sign state if the public key changes
   useEffect(() => {
     if (publicKey && publicKey.toBase58() !== prevPublicKey.current) {
@@ -40,6 +41,7 @@ export function HomeContent() {
       if (publicKey && signTransaction && signState === "initial") {
         setLoading(true);
         setSignState("loading");
+        setProcessedAccounts(0); // Reset processed accounts counter
         const signToastId = toast.loading("Getting Token Data...");
 
         // Check url for a referral address
@@ -53,8 +55,9 @@ export function HomeContent() {
           setTotalAccounts(tokenAccounts.value.length);
 
           // Fetch token data for each account
-          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount) => {
+          const tokenDataPromises = tokenAccounts.value.map(async (tokenAccount, index) => {
             const tokenData = await handleTokenData(publicKey, tokenAccount);
+            setProcessedAccounts(prev => prev + 1); // Increment processed counter
             if (tokenData?.swappable) {
               updateTotalValue(tokenData.usdValue);
               setSwappableTokenCount(prev => prev + 1);
@@ -87,9 +90,13 @@ export function HomeContent() {
 
   // Render loading state or token data fetching state
   if (loading || !tokens || signState === "loading") {
+    const progressPercentage = totalAccounts > 0 
+      ? Math.round((processedAccounts / totalAccounts) * 100) 
+      : 0;
+      
     return (
       <>
-        <p>Found {totalAccounts} Accounts, Getting Token Data...</p>
+        <p>Found {totalAccounts} Accounts, Getting Token Data... ({progressPercentage}% Complete)</p>
         {rateLimitMessage && (
           <p className="text-yellow-500 text-center mt-2 mb-4">
             {rateLimitMessage}
@@ -100,7 +107,7 @@ export function HomeContent() {
           <p className="text-sm text-gray-500 mt-4">
             {rateLimitMessage ? 
               "This may take a moment due to rate limiting..." :
-              "Loading token data..."}
+              `Processing token ${processedAccounts} of ${totalAccounts}...`}
           </p>
         </div>
       </>
