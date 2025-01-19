@@ -1,5 +1,5 @@
 'use client'
-import 'rpc-websockets/dist/lib/client';
+
 import { ReferralProvider } from "@jup-ag/referral-sdk";
 import {
   Connection,
