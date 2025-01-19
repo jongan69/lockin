@@ -15,23 +15,23 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="flex items-center justify-between py-6 mb-12">
+    <header className="flex flex-col sm:flex-row items-center justify-between py-4 md:py-6 mb-8 md:mb-12 px-2 md:px-0 gap-4 sm:gap-0">
       <div className="flex items-center space-x-4">
         <Link href="/">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent cursor-pointer">
+          <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent cursor-pointer">
             Lock TF In
           </h1>
         </Link>
       </div>
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row items-center gap-2 sm:space-x-4 w-full sm:w-auto max-w-[152px] sm:max-w-none">
         <button 
           onClick={handleReferralClick}
           disabled={!publicKey}
-          className="btn btn-secondary"
+          className="btn btn-secondary h-[40px] text-xs md:text-base w-full sm:w-[152px]"
         >
           Referral
         </button>
-        <WalletMultiButton className="btn btn-primary" />
+        <WalletMultiButton className="btn btn-primary !h-[40px] !px-4 !py-0 !text-xs md:!text-base w-full sm:!w-[152px]" />
       </div>
     </header>
   );
