@@ -2022,7 +2022,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:1.1.3, @noble/hashes@npm:~1.1.1":
+"@noble/hashes@npm:1.1.3":
   version: 1.1.3
   resolution: "@noble/hashes@npm:1.1.3"
   checksum: 10c0/362719c36ba26d295ec20bc640c71ec56cf3cfaf3bd4708c2b9e7cff43703f94f74f20f852fee67dbe072ee159f81a8ac7adc86979cd813d8f5c0634ec769ec9
@@ -2040,6 +2040,13 @@ __metadata:
   version: 1.7.1
   resolution: "@noble/hashes@npm:1.7.1"
   checksum: 10c0/2f8ec0338ccc92b576a0f5c16ab9c017a3a494062f1fbb569ae641c5e7eab32072f9081acaa96b5048c0898f972916c818ea63cbedda707886a4b5ffcfbf94e3
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:~1.1.1":
+  version: 1.1.5
+  resolution: "@noble/hashes@npm:1.1.5"
+  checksum: 10c0/cf7f3baff1d95968309d260441d823a854dd76ca0b02f970db0c2f2e0de980c3cc55afcc6a8f3808bb505e65c59cd5332c5f32f821cf35b7982dc7570e991731
   languageName: node
   linkType: hard
 
@@ -2123,9 +2130,9 @@ __metadata:
   linkType: hard
 
 "@particle-network/chains@npm:*":
-  version: 1.8.1
-  resolution: "@particle-network/chains@npm:1.8.1"
-  checksum: 10c0/01db27c090816c42020c2a36d2fe32e79e4a6de5a624ec6833f4c74c3e18545008b1bfb3e0e4305ef1cb51e59438d220e06e94a2c13c858af932b7544d2ff419
+  version: 1.14.15
+  resolution: "@particle-network/chains@npm:1.14.15"
+  checksum: 10c0/b5c09fb9ab7014d25f4d8d35631833a29e2c37e7f6cf3a224f03e0995428950aa6c135e50bcb5ce777e146a2cd43b38292c28404e07abb28cbe9dfb35e7e27b4
   languageName: node
   linkType: hard
 
@@ -6509,9 +6516,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.5.73":
-  version: 1.5.83
-  resolution: "electron-to-chromium@npm:1.5.83"
-  checksum: 10c0/12380962d057c4679add1047cdddb18b909904614272da0527e505a3859eaffde2022dd0688ce7f230582de96405c3d33b667680614475cdafd3f629caa2fee1
+  version: 1.5.84
+  resolution: "electron-to-chromium@npm:1.5.84"
+  checksum: 10c0/8362d556360eba420ea3475a7878c8fa8507a42c4ebfbf44108f6acc4edbe30a1cde79e95613bdc9ae6e7d73bf1776347cf7f615c1a220f63e34a0fa029568e0
   languageName: node
   linkType: hard
 
@@ -7409,7 +7416,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:4.0.0, form-data@npm:^4.0.0":
+"form-data@npm:4.0.0":
   version: 4.0.0
   resolution: "form-data@npm:4.0.0"
   dependencies:
@@ -7417,6 +7424,17 @@ __metadata:
     combined-stream: "npm:^1.0.8"
     mime-types: "npm:^2.1.12"
   checksum: 10c0/cb6f3ac49180be03ff07ba3ff125f9eba2ff0b277fb33c7fc47569fc5e616882c5b1c69b9904c4c4187e97dd0419dd03b134174756f296dec62041e6527e2c6e
+  languageName: node
+  linkType: hard
+
+"form-data@npm:^4.0.0":
+  version: 4.0.1
+  resolution: "form-data@npm:4.0.1"
+  dependencies:
+    asynckit: "npm:^0.4.0"
+    combined-stream: "npm:^1.0.8"
+    mime-types: "npm:^2.1.12"
+  checksum: 10c0/bb102d570be8592c23f4ea72d7df9daa50c7792eb0cf1c5d7e506c1706e7426a4e4ae48a35b109e91c85f1c0ec63774a21ae252b66f4eb981cb8efef7d0463c8
   languageName: node
   linkType: hard
 
@@ -7544,11 +7562,11 @@ __metadata:
   linkType: hard
 
 "get-tsconfig@npm:^4.7.5":
-  version: 4.8.1
-  resolution: "get-tsconfig@npm:4.8.1"
+  version: 4.9.0
+  resolution: "get-tsconfig@npm:4.9.0"
   dependencies:
     resolve-pkg-maps: "npm:^1.0.0"
-  checksum: 10c0/536ee85d202f604f4b5fb6be81bcd6e6d9a96846811e83e9acc6de4a04fb49506edea0e1b8cf1d5ee7af33e469916ec2809d4c5445ab8ae015a7a51fbd1572f9
+  checksum: 10c0/b1b83a2f65aa589cd99036c21de928bea7424be6575a2736cb4de5fb5760c874d64ac69809f4691c1262a4e3c72c646fd2cb758e406acbff7f37ee86301943ee
   languageName: node
   linkType: hard
 
@@ -9399,9 +9417,9 @@ __metadata:
   linkType: hard
 
 "node-fetch-native@npm:^1.6.4":
-  version: 1.6.4
-  resolution: "node-fetch-native@npm:1.6.4"
-  checksum: 10c0/78334dc6def5d1d95cfe87b33ac76c4833592c5eb84779ad2b0c23c689f9dd5d1cfc827035ada72d6b8b218f717798968c5a99aeff0a1a8bf06657e80592f9c3
+  version: 1.6.6
+  resolution: "node-fetch-native@npm:1.6.6"
+  checksum: 10c0/8c12dab0e640d8bc126a03d604af9cf3fc1b87f2cda5af0c71601079d5ed835c1dc149c7042b61c83f252a382e1cf1e541788f4c9e8e6c089af77497190f5dc3
   languageName: node
   linkType: hard
 
