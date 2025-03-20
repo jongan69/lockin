@@ -175,9 +175,7 @@ export const useCreateSwapInstructions = (
             const params: QuoteGetRequest = {
               inputMint: selectedItem.mintAddress,
               outputMint: LOCKIN_MINT,
-              autoSlippage: true,
               amount: Number(balanceInSmallestUnit),
-              maxAutoSlippageBps: slippageBps,
               platformFeeBps: PLATFORM_FEE_BPS,
               onlyDirectRoutes: false,
               asLegacyTransaction: false,
