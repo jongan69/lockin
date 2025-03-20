@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 
 import "../styles/globals.css";
 import "../styles/App.css";
+import Script from "next/script";
 
 const endpoint = RPC_URL!;
 
@@ -28,14 +29,21 @@ function MyApp({ Component, pageProps }: AppProps) {
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <ClientWalletProvider wallets={wallets}>
-        <ReactUIWalletModalProviderDynamic>
-          <Toaster position="bottom-right" reverseOrder={true} />
-          <Component {...pageProps} />
-        </ReactUIWalletModalProviderDynamic>
-      </ClientWalletProvider>
-    </ConnectionProvider>
+    <>
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
+        crossOrigin="anonymous"
+      />
+      <ConnectionProvider endpoint={endpoint}>
+        <ClientWalletProvider wallets={wallets}>
+          <ReactUIWalletModalProviderDynamic>
+            <Toaster position="bottom-right" reverseOrder={true} />
+            <Component {...pageProps} />
+          </ReactUIWalletModalProviderDynamic>
+        </ClientWalletProvider>
+      </ConnectionProvider>
+    </>
   );
 }
 
