@@ -6,12 +6,12 @@ class MyDocument extends Document {
   render() {
     return (
       <Html data-theme={DEFAULT_THEME}>
-        <Head>
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
           crossOrigin="anonymous"
         />
+        <Head>
           <meta
             name="description"
             content="It's time to lock in."

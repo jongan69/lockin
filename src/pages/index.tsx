@@ -10,12 +10,12 @@ import Script from 'next/script'
 const Home: NextPage = () => {
   return (
     <>
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
+        crossOrigin="anonymous"
+      />
       <Head>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
-          crossOrigin="anonymous"
-        />
         <title>Lock TF In</title>
         <meta
           name="description"
