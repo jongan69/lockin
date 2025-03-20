@@ -5,12 +5,13 @@ import { Header } from "@components/layout/header";
 import { PageContainer } from "@components/layout/page-container";
 import { HomeContent } from "@components/home/home-content";
 import { Footer } from "@components/layout/footer";
+import Script from 'next/script'
 
 const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <script
+        <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
           crossOrigin="anonymous"

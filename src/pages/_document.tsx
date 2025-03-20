@@ -1,12 +1,13 @@
 import { DEFAULT_THEME } from "@utils/globals";
 import Document, { Html, Head, Main, NextScript } from "next/document";
+import Script from 'next/script'
 
 class MyDocument extends Document {
   render() {
     return (
       <Html data-theme={DEFAULT_THEME}>
         <Head>
-        <script
+        <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
           crossOrigin="anonymous"
