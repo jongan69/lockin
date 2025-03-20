@@ -29,7 +29,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.10",
     "@solana/web3.js": "^1.73.3",
     "@tailwindcss/typography": "^0.5.9",
-    "axios": "^1.7.9",
+    "axios": "^1.8.2",
     "big.js": "^6.2.1",
     "bottleneck": "^2.19.5",
     "browserify-zlib": "^0.2.0",
