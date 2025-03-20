@@ -10,10 +10,11 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <head>
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
-            crossOrigin="anonymous"></script>
-        </head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6202902142885850"
+          crossOrigin="anonymous"
+        />
         <title>Lock TF In</title>
         <meta
           name="description"
